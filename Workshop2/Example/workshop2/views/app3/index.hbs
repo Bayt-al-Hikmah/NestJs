@@ -1,0 +1,11 @@
+
+    <h1>Available Fruits</h1>
+    <ul>
+        {{#each fruits}}
+            <li>{{this}}</li>
+        {{else}}
+            <li>No fruits available at the moment.</li>
+        {{/each}}
+    </ul>
+
+    <p>Total fruits: {{fruits.length}}</p>

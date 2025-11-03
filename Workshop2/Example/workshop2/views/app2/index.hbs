@@ -1,0 +1,14 @@
+
+    {{#if isAdmin}}
+        <h1>Welcome, Admin!</h1>
+        <p>You have full access to the system.</p>
+    {{else if isEditr}}
+        <h1>Welcome, Editor!</h1>
+        <p>You can edit and manage content.</p>
+    {{else if isViewer}}
+        <h1>Welcome, Viewer!</h1>
+        <p>You can browse and read the available content.</p>
+    {{else}}
+        <h1>Welcome, Guest!</h1>
+        <p>Your role is not recognized. Please log in or contact the administrator.</p>
+    {{/if}}

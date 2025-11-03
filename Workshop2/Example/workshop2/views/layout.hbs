@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My NestJS Website</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="icon" type="image/x-icon" href="/images/logo.png">
+
+</head>
+<body>
+    <header>
+        <h1>My Website</h1>
+        {{> navbar}}
+    </header>
+
+    <main>
+        {{{ body }}}
+    </main>
+
+    {{> footer}}
+</body>
+</html>

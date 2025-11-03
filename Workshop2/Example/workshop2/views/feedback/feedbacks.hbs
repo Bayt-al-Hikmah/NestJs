@@ -1,0 +1,12 @@
+<h1>Submitted Feedback</h1>
+    <ul>
+        {{#each feedback_list}}
+            <li>
+                <strong>{{this.name}}</strong> ({{this.email}})<br>
+                {{this.message}}
+            </li>
+            <hr>
+        {{else}}
+            <li>No feedback has been submitted yet.</li>
+        {{/each}}
+    </ul>
