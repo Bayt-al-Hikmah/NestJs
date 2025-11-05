@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Uploader</title>
+    <link rel="stylesheet" href="/public/style.css"> </head>
+<body>
+    <h1>Image Uploader </h1>
+    
+    <div class="upload-section">
+        <h2>Upload a New Image</h2>
+        <form action="/images/upload" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*" required>
+            <button type="submit">Upload Image</button>
+        </form>
+    </div>
+
+    <hr>
+
+    <div class="gallery">
+        <h2>Uploaded Images ({{images.length}})</h2>
+        {{#if images}}
+            <div class="image-grid">
+                {{#each images}}
+                <div class="image-card">
+                    <p class="filename">{{this.filename}}</p>
+                    <img src="{{this.mediaPath}}" alt="{{this.filename}}">
+                    <p class="path-info">Path: <code>{{this.mediaPath}}</code></p>
+                </div>
+                {{/each}}
+            </div>
+        {{else}}
+            <p>No images have been uploaded yet.</p>
+        {{/if}}
+    </div>
+</body>
+</html>
