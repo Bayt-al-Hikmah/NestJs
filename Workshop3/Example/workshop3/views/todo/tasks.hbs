@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My To-Do List</title>
+    <link rel="stylesheet" href="/css/style.css">
+    
+</head>
+<body>
+    <div class="container">
+        <h1>My To-Do List</h1>
+        <a href="/todo/add" class="btn">Add New Task</a>
+        <ul class="task-list">
+            {{#if tasks}}
+                {{#each tasks}}
+                    <li class="{{#if done}}done{{/if}}">
+                        <strong>{{ title }}</strong><br>
+                        <small>{{ description }}</small>
+                    </li>
+                {{/each}}
+            {{else}}
+                <li>No tasks added yet. Start by creating one!</li>
+            {{/if}}
+        </ul>
+    </div>
+</body>
+</html>

@@ -6,11 +6,9 @@ import {
 import { AppModule } from './app.module';
 import { join } from 'path';
 import fastifyView from '@fastify/view';
-import fastifyCookie from '@fastify/cookie';
-import fastifyCsrf from '@fastify/csrf-protection';
-import { ValidationPipe } from '@nestjs/common';
 import * as handlebars from 'handlebars';
-
+import fastifyCookie from '@fastify/cookie';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -26,21 +24,11 @@ async function bootstrap() {
     engine: {
       handlebars: handlebars,
     },
-    templates: join(__dirname, '..', 'views'),
-    layout: 'layout',
-    options: {
-      partials: {
-      navbar: 'partials/navbar.hbs',
-	    footer: 'partials/footer.hbs'
-      },
-    },
+    templates: join(__dirname, '..', 'views'), // Path to templates
   });
-    await app.register(fastifyCookie);
-
-  await app.register(fastifyCsrf);
-
-
-
+  await app.register(fastifyCookie, {
+  secret: 'YOUR_VERY_SECRET_KEY_HERE'
+});
   await app.listen(3000);
 }
 bootstrap();

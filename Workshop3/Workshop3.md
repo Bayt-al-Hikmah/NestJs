@@ -1,8 +1,7 @@
 ## Objectives
 - Working with Database and Django Models  
 - Authentication and Session Management  
-- Working with NestJs CLI
-- Managing the Admin Panel
+- Exploring Pipes, Guards, and Interceptors
 ## Databases, TypeScript, and NestJS ORMs
 In our previous sessions, we built applications that displayed dynamic content. For example, in our `feedback` app, we accepted user input and stored it in a simple TypeScript array. However, that data structure exists only in the server's RAM (memory), meaning it’s temporary.    
 This approach has a serious limitation: data stored in memory is volatile. As soon as the NestJS server restarts, shuts down, or crashes whether due to maintenance, updates, or deployment all the information in that array is instantly lost.   
@@ -255,6 +254,20 @@ export class CreateTodoDto {
 }
 ```
 By using decorators like **`@IsNotEmpty()`** and **`@MaxLength()`** from the `class-validator` package (a NestJS best practice), we get automatic validation built into our application pipeline. This means the controller won't even execute if the incoming data doesn't meet these requirements.
+
+to apply the DTO we add the following configuration to our ``main.ts``
+```ts
+// other import
+import { ValidationPipe } from '@nestjs/common';
+
+// ...
+ app.useGlobalPipes(new ValidationPipe({
+  whitelist: true,
+  forbidNonWhitelisted: true,
+  transform: true,
+}));
+//....
+```
 #### Creating the Service
 Noe lets create the **`TodoService`**  which is responsible for communication with the database.
 **`src/todo/todo.service.ts`**, 
@@ -377,9 +390,9 @@ This template will receive the `tasks` array from the controller and loop throug
                 <label for="description">Description</label>
                 <textarea id="description" name="description" rows="5" required></textarea>
             </div>
-            <button type="submit">Save Task</button>
+            <button type="submit">Save Task</button> <a href="/todo" class="btn back">Back to List</a>
         </form>
-        <a href="/todo" class="btn back">Back to List</a>
+        
     </div>
 </body>
 </html>
@@ -758,10 +771,10 @@ Now lets create the login and register templates.
             <input type="password" name="password" required placeholder="Enter password">
         </div>
 
-        <button type="submit">Register</button>
+        <button type="submit">Register</button> <a class="btn back" href="/auth/login">Already have an account? Login</a>
     </form>
 
-    <a class="btn back" href="/auth/login">Already have an account? Login</a>
+    
 </div>
 </body>
 </html>
@@ -790,10 +803,10 @@ This template will handel registring user.
             <input type="password" name="password" required placeholder="Enter password">
         </div>
 
-        <button type="submit">Login</button>
+        <button type="submit">Login</button> <a class="btn back" href="/auth/register">Don't have an account? Register</a>
     </form>
 
-    <a class="btn back" href="/auth/register">Don't have an account? Register</a>
+    
 </div>
 </body>
 </html>
@@ -1018,3 +1031,228 @@ export class TodoService {
 We replaced our old methods with new ones
 - **`findAllByUserId(userId: number)`**: This method retrieves all tasks for a specific user. It uses a **nested TypeORM `where` clause (`{ user: { id: userId } }`)** to filter the `Todo` records based on the ID property of the related `user` entity. This is a robust way to query relational data in TypeORM.
 - **`create(createTodoDto: CreateTodoDto, user: User)`**: This method creates a new task. It takes the task data (`CreateTodoDto`) and the **full `User` object** (which comes from the authenticated request). By setting **`user: user`** on the new `Todo` entity, TypeORM automatically handles setting the correct foreign key (`userId`) in the database.
+
+## Exploring Pipes, Guards, and Interceptors
+In any robust backend application, an incoming HTTP request must pass through several stages before it reaches the business logic and returns a response. NestJS formalizes this process using Pipes, Guards, Interceptors, and Exception Filters. These tools allow us to cleanly separate concerns like validation, authorization, logging, and error handling from the main controller and service logic.
+### Request Lifecycle
+The NestJS request pipeline follows a predictable path. A request enters your application and proceeds through the components in this specific order:
+- **Incoming Request:** The request hits the server.
+- **Guards:** Checks authorization (e.g., Is the user logged in? Does the user have the required role?). If a Guard fails, the request is blocked immediately.
+- **Interceptors (Pre-Controller):** Logic executed before the controller handler runs (e.g., logging the request).
+- **Pipes (Parameter-level):** Validation and transformation of data for specific route parameters (e.g., ensuring an ID is a valid number, validating the DTO body).
+- **Controller Handler:** Your main business logic starts executing (e.g., `TodoController.create()`).
+- **Service/Database Logic:** The service executes the core logic (e.g., `TodoService.create()`).
+- **Interceptors (Post-Controller):** Logic executed **after** the controller/service returns, allowing you to transform the final result or handle the promise (e.g., caching, standardizing the response format).
+- **Exception Filters:** If any component (Guard, Pipe, Controller, Service) throws an exception, the Exception Filters catch it and standardize the HTTP error response.
+- **Outgoing Response:** The final response is sent back to the client.
+### Pipes: Validation and Transformation
+Pipes are classes decorated with `@Injectable()` that implement the `PipeTransform` interface. They execute immediately before a controller handler is called, operating directly on the arguments.
+####  Data Validation with `ValidationPipe`
+The built-in **`ValidationPipe`** is the most common use case. we use it to validate the data that sent by the users  , it ensure incoming data meets the structural and content rules defined in our DTOs.   
+```ts
+import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+export class CreateTodoDto {
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  title: string;
+
+  @IsString()
+  @IsNotEmpty()
+  description: string;
+
+}
+```
+To apply validation automatically across the entire application, set the global `ValidationPipe` in `main.ts`:
+```ts
+app.useGlobalPipes(new ValidationPipe({
+  whitelist: true,
+  forbidNonWhitelisted: true,
+  transform: true,
+}));
+```
+Now NestJS will validate the request body automatically whenever we use the DTO:
+```ts
+async addTask(@Body() createTodoDto: CreateTodoDto, @Res({ passthrough: true }) res: FastifyReply,@Request() req)
+```
+By specifying `@Body() createTodoDto: CreateTodoDto`, NestJS checks the request data according to the rules defined in `CreateTodoDto`.
+#### Building Custom Pipes
+We can build custom pipes to handle specific transformations, for example a custom pipe can be used to convert an incoming string ID (from a URL path) directly into a database entity object, simplifying controller code.
+
+**``src/common/pipes/parse-int.pipe.ts``**
+```ts
+// src/common/pipes/parse-int.pipe.ts 
+import { ArgumentMetadata, Injectable, PipeTransform, BadRequestException } from '@nestjs/common';
+ 
+@Injectable() 
+export class ParseIntPipe implements PipeTransform<string, number> { 
+	transform(value: string, metadata: ArgumentMetadata): number { 
+		const val = parseInt(value, 10); 
+		if (isNaN(val)) { 
+			throw new BadRequestException('Validation failed: Parameter is not an integer.'); 
+		} 
+		return val; 
+		} 
+	}
+```
+here we created transformer that implement the `PipeTransform<string, number>` interface it have one method ``transform`` it transform ``string`` value to ``int`` and throw error if value not valide, we use it as following
+```ts
+import { ParseIntPipe } from '../common/pipes/parse-int.pipe'; 
+// The ParseIntPipe is executed before the handler, guaranteeing 'id' is a number 
+@Get(':id') 
+findOne(@Param('id', ParseIntPipe) id: number) { 
+	return this.todoService.findOne(id); 
+}
+```
+We use the ``ParseIntPipe`` it transform the id from `string` to `int`
+### Guards: Authorization and Access Control
+Guards, which implement the `CanActivate` interface, are responsible for authorization. They decide whether a request is allowed to proceed based on conditions like user roles, permissions, or time-of-day. Guards are executed before any interceptors or pipes.
+#### Understanding the Execution Context
+The `canActivate()` method receives an `ExecutionContext` object. This object gives you access to the underlying request details for the current context (HTTP, WebSockets, or gRPC)
+```ts
+import { ExecutionContext, CanActivate } from '@nestjs/common';
+
+export class AdminGuard implements CanActivate {
+	canActivate(context: ExecutionContext): boolean {
+		const req = context.switchToHttp().getRequest();
+		const user = req.user;
+		return user && user.roles.includes('admin');
+	} 
+}
+```
+This Guard get the user from the reuest and check if it admin or not if he is adming the request proccess else it will block
+#### Authorization Guards
+We already implemented the `GuestGuard` and used the built-in `AuthGuard('jwt')`. A powerful use of Guards is for **Role-Based Access Control (RBAC)**.   
+To check for a specific role:
+1. **Define Roles (Metadata):** Use a custom decorator and the `@SetMetadata()` decorator to attach role requirements to a controller method.
+2. **Check Roles (Guard):** Create a generic `RolesGuard` that reads this metadata and compares it against the user's roles.
+    
+
+This pattern allows us to define complex access rules with a single line:
+
+```ts
+@Post() 
+@SetMetadata('roles', ['admin', 'manager']) 
+async create(@Body() createTodoDto: CreateTodoDto) { /* ...*/ } 
+// 2. The RolesGuard checks if the authenticated user has at least one of these roles 
+
+@UseGuards(AuthGuard('jwt'), RolesGuard) 
+@Controller('todos') export class TodoController { /* ... */ }
+```
+The `@Post()` endpoint has metadata specifying allowed roles (`admin` and `manager`) using `@SetMetadata('roles', [...])`. When a request is made, the `RolesGuard` reads this metadata and checks if the authenticated user (validated by the JWT `AuthGuard`) has at least one of the required roles. If the user doesn't have a matching role, access is denied; otherwise, the action is allowed.
+### Interceptors:
+Interceptors implement the `NestInterceptor` interface and allow us to bind extra logic before or after the execution of the main controller handler. They are powerful for implementing cross-cutting concerns cleanly.
+#### Response Transformation
+Interceptors often transform the final data structure, ensuring all API responses conform to a unified format (e.g., wrapping data in a `data` key).
+```ts
+import { NestInterceptor, ExecutionContext, CallHandler, Injectable } from '@nestjs/common'; 
+import { map } from 'rxjs/operators'; 
+import { Observable } from 'rxjs'; 
+
+interface Response<T> { data: T; } 
+@Injectable() 
+export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> {
+	intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>> { 
+		return next.handle().pipe( map(data => ({ 
+			statusCode: context.switchToHttp().getResponse().statusCode, 
+			timestamp: new Date().toISOString(), 
+			data: data, 
+			})
+		), 
+		); 
+	} 
+}
+```
+This interceptor automatically formats every response returned by your controllers. When a request is processed, the interceptor lets the handler run, then uses `map()` to wrap the original response data in a consistent structure. It adds useful extra fields  such as the HTTP status code and a timestamp and places the controller's actual output inside a `data` field. This helps enforce a unified API response format across the application without changing each controller manually.
+#### Logging and Timing
+Interceptors are ideal for timing requests, as they can execute logic both before the controller is called and after the final result is available.
+```ts
+// src/common/interceptors/logging.interceptor.ts 
+// ... imports ... 
+import { tap } from 'rxjs/operators'; 
+
+@Injectable() 
+export class LoggingInterceptor implements NestInterceptor { 
+	intercept(context: ExecutionContext, next: CallHandler): Observable<any> { 
+		const now = Date.now(); 
+		console.log(`[REQUEST] ${context.getClass().name} starting...`); 
+		return next.handle().pipe( 
+			tap(() => console.log(`[RESPONSE] Completed in ${Date.now() - now}ms`)), 
+		); 
+	} 
+}
+```
+We can apply these using `@UseInterceptors(TransformInterceptor)` at the controller, method, or global level.
+### Exception Filters
+When an exception is thrown in any part of the lifecycle (Pipe, Guard, Interceptor, or Service), NestJS's default handler catches it and sends a generic response. Exception Filters allow us to customize and standardize this error handling globally.
+#### Handling and Standardizing Error Responses Globally
+By default, NestJS handles built-in exceptions like `NotFoundException` and `BadRequestException` correctly. To catch all exceptions and ensure a standard response format, we create a global filter.
+**``src/common/filters/http-exception.filter.ts``**
+```ts
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common'; 
+import { FastifyReply } from 'fastify'; 
+@Catch() // Catches all types of exceptions 
+export class AllExceptionsFilter implements ExceptionFilter { 
+	catch(exception: unknown, host: ArgumentsHost) { 
+		const ctx = host.switchToHttp(); 
+		const response = ctx.getResponse<FastifyReply>(); 
+		const request = ctx.getRequest(); 
+		// Check if it's a known HTTP exception or a generic server error 
+		const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR; 
+		const message = exception instanceof HttpException ? (exception.getResponse() as any)?.message || exception.message : 'Internal server error'; 
+		// Send standardized JSON error response 
+		response.status(status).send({ 
+			statusCode: status, 
+			timestamp: new Date().toISOString(), 
+			path: request.url, 
+			message: message, 
+		}); 
+	} 
+}
+```
+To use it globally, we need to register it in our `main.ts`:
+```ts
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+
+async function bootstrap() {
+	// other codes
+	app.useGlobalFilters(new AllExceptionsFilter());
+	// other code
+	
+}
+```
+#### Creating Custom Exception Filters for Specific Errors
+We can also create a filter to handle only a specific, non-HTTP exception type from our business logic, like a `UserNotFoundException`.
+```ts
+// @Catch(UserNotFoundException) 
+// export class UserNotFoundFilter implements ExceptionFilter { /* ... */ }
+```
+### Custom Decorators
+Custom Parameter Decorators (e.g., `@User()`) abstract away the boilerplate of manually extracting data from the request object in every controller. They leverage the `createParamDecorator` function.
+#### Building `@User()` Decorators
+Lets create simple `@User()` decorator it simplify access to The `JwtStrategy` populates `req.user`
+```ts
+import { createParamDecorator, ExecutionContext } from '@nestjs/common'; 
+
+export const User = createParamDecorator( 
+	(data: unknown, ctx: ExecutionContext) => { 
+		const request = ctx.switchToHttp().getRequest(); // 'req.user' is populated by Passport/JwtStrategy 
+		return request.user; 
+		}, 
+	);
+```
+Now we can use it inside our controller
+```ts
+// src/todo/todo.controller.ts
+// ....
+async taskList(@User() user) { 
+	// Cleanly get the user object injected into the handler 
+	const userId = user.userId; 
+	const tasks = await this.todoService.findAllByUserId(userId); 
+	return { tasks }; 
+}
+
+// ....
+```
+This pattern keeps the controller focused on routing and leaves the data extraction and manipulation to the specialized components (Guards, Pipes, and Decorators).

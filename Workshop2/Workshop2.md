@@ -946,6 +946,20 @@ We defined a `FeedbackDto` class used to validate user feedback, we used decorat
 - the `message` field must be a string with at least 10 characters. 
 
 These rules ensure that any incoming feedback data meets the required format before being processed.
+
+to apply the DTO we add the following configuration to our ``main.ts``
+```ts
+// other import
+import { ValidationPipe } from '@nestjs/common';
+
+// ...
+ app.useGlobalPipes(new ValidationPipe({
+  whitelist: true,
+  forbidNonWhitelisted: true,
+  transform: true,
+}));
+//....
+```
 ### Updating the Controller Logic   
 To activate this validation, we apply the built-in `ValidationPipe` to the route handler's request body.  
 **`src/feedback/feedback.controller.ts`**
