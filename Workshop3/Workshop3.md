@@ -1,5 +1,5 @@
 ## Objectives
-- Working with Database and Django Models  
+- Working with Database and Models  
 - Authentication and Session Management  
 - Exploring Pipes, Guards, and Interceptors
 ## Databases, TypeScript, and NestJS ORMs
