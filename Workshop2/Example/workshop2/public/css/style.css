@@ -13,3 +13,37 @@ img {
     width: 150px;
     margin-top: 20px;
 }
+form {
+    margin-top: 15px;  
+}
+
+button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #45a049;
+}
+form div label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+input,textarea{
+    width:350px;
+}
+input{
+    font-size: 18px;
+    padding: 10px;
+}
+textarea{
+    height: 200px;
+    font-size: 18px;
+    padding: 10px;
+}

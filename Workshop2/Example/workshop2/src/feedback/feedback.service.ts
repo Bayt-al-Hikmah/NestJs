@@ -1,20 +1,16 @@
 import { Injectable } from '@nestjs/common';
+import { CreateFeedbackDto } from './dto/create-feedback.dto';
 
-export interface Feedback {
-  name: string;
-  email: string;
-  message: string;
-}
 
 @Injectable()
 export class FeedbackService {
-  private readonly feedbacks: Feedback[] = [];
-
-  addFeedback(feedback: Feedback) {
+  
+  private readonly feedbacks: CreateFeedbackDto[] = []
+  addFeedback(feedback: CreateFeedbackDto) {
     this.feedbacks.push(feedback);
-  }
+   }
 
-  getAllFeedback(): Feedback[] {
-    return this.feedbacks;
-  }
+  getAllFeedback(): CreateFeedbackDto[] {
+  return this.feedbacks;
+  }  
 }

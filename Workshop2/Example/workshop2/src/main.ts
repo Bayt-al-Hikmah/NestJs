@@ -1,28 +1,24 @@
 import { NestFactory } from '@nestjs/core';
-import {
-  FastifyAdapter,
-  NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
 import { join } from 'path';
 import fastifyView from '@fastify/view';
-import fastifyCookie from '@fastify/cookie';
-import fastifyCsrf from '@fastify/csrf-protection';
-import { ValidationPipe } from '@nestjs/common';
 import * as handlebars from 'handlebars';
-
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
   );
+
   app.useGlobalPipes(new ValidationPipe({
   whitelist: true,
   forbidNonWhitelisted: true,
   transform: true,
-}));
-  app.register(fastifyView, {
+  }));
+
+  await app.register(fastifyView, {
     engine: {
       handlebars: handlebars,
     },
@@ -35,11 +31,13 @@ async function bootstrap() {
       },
     },
   });
-    await app.register(fastifyCookie);
-
-  await app.register(fastifyCsrf);
-
-
+  await app.register(require('@fastify/static'), {
+  root: join(__dirname, '..', 'public'), 
+  prefix: '/static/', 
+  });
+  
+  await app.register(require('@fastify/cookie'));
+  await app.register(require('@fastify/csrf-protection'));
 
   await app.listen(3000);
 }
