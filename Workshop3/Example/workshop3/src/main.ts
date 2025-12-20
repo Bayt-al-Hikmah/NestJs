@@ -1,13 +1,8 @@
 import { NestFactory } from '@nestjs/core';
-import {
-  FastifyAdapter,
-  NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import {FastifyAdapter,NestFastifyApplication, } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
 import { join } from 'path';
-import fastifyView from '@fastify/view';
 import * as handlebars from 'handlebars';
-import fastifyCookie from '@fastify/cookie';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
@@ -20,15 +15,28 @@ async function bootstrap() {
   forbidNonWhitelisted: true,
   transform: true,
 }));
-  app.register(fastifyView, {
+  await app.register(require('@fastify/static'), {
+    root: join(__dirname, '..', 'public'), 
+    prefix: '/static/', 
+  });
+  app.register(require('@fastify/view'), {
     engine: {
       handlebars: handlebars,
     },
     templates: join(__dirname, '..', 'views'), // Path to templates
   });
-  await app.register(fastifyCookie, {
-  secret: 'YOUR_VERY_SECRET_KEY_HERE'
-});
+  require('dotenv').config();
+  await app.register(require('@fastify/secure-session'), {
+    secret:  process.env.SECRET,
+    cookie: {
+      secure: false,       
+      httpOnly: true,      
+      sameSite: 'lax',     
+      maxAge: 15 * 60 * 1000 
+    },
+    saveUninitialized: false,
+  });
   await app.listen(3000);
+
 }
 bootstrap();

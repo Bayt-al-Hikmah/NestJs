@@ -1,4 +1,3 @@
-
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 
 export class AuthDto  {
@@ -10,8 +9,4 @@ export class AuthDto  {
   @IsString()
   @IsNotEmpty()
   password: string;
-
-
 }
-
-

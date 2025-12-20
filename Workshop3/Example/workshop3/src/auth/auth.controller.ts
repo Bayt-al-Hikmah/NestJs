@@ -1,15 +1,16 @@
-import { Controller, Post, Body, UseGuards, Request, Redirect,Get, Render, Res } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Controller, Post, Body, UseGuards, Get, Render, Req,Res} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthDto } from './dto/create-auth.dto';
-import type { FastifyReply } from 'fastify';
-import { User } from './entities/auth.entity';
-import {GuestGuard} from "./guard/guest.guard"
+import type { FastifyRequest, FastifyReply } from 'fastify';
+import { Guest } from "./guard/auth.guard"
+import type {Session } from '@fastify/secure-session'
 
-@Controller('auth')
-@UseGuards(GuestGuard)
+@Controller('todo')
+@UseGuards(Guest)
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService,
+    
+  ) {}
 
   @Get('register')
   @Render('auth/register')
@@ -18,29 +19,28 @@ export class AuthController {
   }
 
   @Post('register')
-  @Redirect("/auth/login")
-  async register(@Body() registerDto: AuthDto, @Res({ passthrough: true }) res: FastifyReply) {
-    await this.authService.register(registerDto);
-    
+  async register(@Body() registerDto: AuthDto,@Res() res:FastifyReply ) {
+    const user = await this.authService.register(registerDto);
+    if(user){
+      return await res.status(301).redirect("/todo/login")
+    }
+    return res.status(301).redirect("/todo/register")
   }
 
   @Get('login')
   @Render('auth/login')
-  loginPage(@Request() req) {
-    return {}; 
- 
+  loginPage() {
+    return {};
   }
+  
 
-  @UseGuards(AuthGuard('local'))
   @Post('login')
-  @Redirect("/todo")
-  async login(@Request() req, @Res({ passthrough: true }) res: FastifyReply) {
-    const token = await this.authService.login(req.user);
-      res.setCookie('token', token.access_token, {
-      httpOnly: true,    
-      path: '/',          
-      sameSite: 'lax',    
-    });
-
+  async login(@Body() login :AuthDto, @Req() req:FastifyRequest,@Res() res:FastifyReply) {
+    const user = await this.authService.login(login);
+    if(user){
+       await (req.session as any).set("userId",String(user.id) )
+       res.status(301).redirect("/")
+    }
+     res.status(301).redirect("/todo/login")
   }
 }

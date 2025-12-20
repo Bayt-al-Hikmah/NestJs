@@ -1,15 +1,11 @@
 import { ManyToOne, JoinColumn, Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
-import { User } from '../../auth/entities/auth.entity'; 
-
+import { User } from '../../auth/entities/auth.entity';
 
 @Entity()
 export class Todo {
+
   @PrimaryGeneratedColumn()
   id: number;
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' }) 
-  user: User;
 
   @Column({ length: 200 })
   title: string;
@@ -18,8 +14,14 @@ export class Todo {
   description: string;
 
   @Column({ default: false })
-  done: boolean; 
+  done: boolean;
 
   @CreateDateColumn()
   created_at: Date;
+  
+  
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
 }
