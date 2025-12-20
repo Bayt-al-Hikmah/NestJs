@@ -5,7 +5,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import { Guest } from "./guard/auth.guard"
 import type {Session } from '@fastify/secure-session'
 
-@Controller('todo')
+@Controller('/')
 @UseGuards(Guest)
 export class AuthController {
   constructor(private readonly authService: AuthService,
@@ -22,7 +22,7 @@ export class AuthController {
   async register(@Body() registerDto: AuthDto,@Res() res:FastifyReply ) {
     const user = await this.authService.register(registerDto);
     if(user){
-      return await res.status(301).redirect("/todo/login")
+      return await res.status(301).redirect("/login")
     }
     return res.status(301).redirect("/todo/register")
   }
@@ -41,6 +41,6 @@ export class AuthController {
        await (req.session as any).set("userId",String(user.id) )
        res.status(301).redirect("/")
     }
-     res.status(301).redirect("/todo/login")
+     res.status(301).redirect("/login")
   }
 }

@@ -35,9 +35,5 @@ export class TodoController {
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error saving task.");
         }
     }
-    @Get('logout')
-    async logout(@Req() req:FastifyRequest,@Res() res:FastifyReply) {
-    await req.session.delete()
-    res.status(301).redirect("/todo/login")
-  }
+    
 }

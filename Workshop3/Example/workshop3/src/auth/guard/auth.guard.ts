@@ -9,7 +9,7 @@ export class Authorized implements CanActivate {
     const id =  req.session.get("userId");
     
     if (!id){
-       return res.redirect('todo/login'); 
+       return res.redirect('/login'); 
     } 
     return true;
   }
