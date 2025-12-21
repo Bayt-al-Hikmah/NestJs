@@ -572,7 +572,7 @@ export class AuthDto  {
 ```
 User most submit username and password, user name is max length 50 characters
 #### Configure `AuthModule` 
-We we add the TypeORM entity to our `AuthModule` imports, so it will be accessible for our resource
+We add the TypeORM entity to our `AuthModule` imports, so it will be accessible for our resource
 
 **`src/auth/auth.module.ts`**
 ```ts

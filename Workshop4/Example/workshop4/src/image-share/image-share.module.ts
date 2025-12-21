@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
-import { ImageShareController } from './image-share.controller';
 import { ImageShareService } from './image-share.service';
-
+import { ImageShareController } from './image-share.controller';
+import {ImageShare} from './entities/image-share.entity'
+import { TypeOrmModule } from '@nestjs/typeorm';
 @Module({
+  imports:[TypeOrmModule.forFeature([ImageShare])],
   controllers: [ImageShareController],
-  providers: [ImageShareService]
+  providers: [ImageShareService],
 })
 export class ImageShareModule {}

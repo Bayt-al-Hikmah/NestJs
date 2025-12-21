@@ -3,19 +3,19 @@
 - Work with settings files and project configuration
 
 ## Upload and Manage Files Efficiently in NestJS
-In modern web applications, allowing users to upload files such as images, documents, or other media is a common requirement. **NestJS**, built on top of Express or **Fastify**, offers a powerful and flexible way to handle file uploads. This involves using  **`@fastify/multipart`** to handle `multipart/form-data`, which is primarily used for file uploads.
+NestJS offers a powerful and flexible way to handle file uploads. This involves using  `@fastify/multipart` to handle `multipart/form-data`, which is primarily used for file uploads.
 ### Introduction
-Handling file uploads introduces challenges like storage management, security (e.g., file type validation, size limits), and performance optimization. NestJS leverages platform-specific libraries:
-For Fastify Platform we uses `@nestjs/platform-fastify` and the **`@fastify/multipart`** plugin, which is optimized for performance and lower overhead.
+Handling file uploads introduces challenges like storage management, security (e.g., file type validation, size limits), and performance optimization. NestJS leverages platform-specific libraries:   
+For Fastify Platform we uses `@nestjs/platform-fastify` and the `@fastify/multipart` plugin, which is optimized for performance and lower overhead.
 ### Creating App
-Lets create simple apps that allow us to upload images and display the images that the user uploaded. we start by creating new project using the NestJs Cli
+Lets create simple app that allow us to upload images and display them. we start by creating new project using the NestJs Cli
 ```shell
 nest new workshop4
 ```
 ### Configuration for File Uploads 
 Since the default `@nestjs/platform-express` interceptors (like `FileInterceptor`) are incompatible with Fastify, we must use a Fastify-native approach, typically involving the `@fastify/multipart` plugin or a compatible wrapper.
 #### Enable Fastify Adapter
-Instead of Multer, Fastify uses the `@fastify/multipart` package. We need to install it and register it via the Fastify Adapter.
+Fastify uses the `@fastify/multipart` package. We need to install it and register it via the Fastify Adapter.
 ```shell
 npm install @nestjs/platform-fastify @fastify/multipart
 ```
@@ -26,7 +26,6 @@ Then, configure the application in `main.ts` to use the Fastify Adapter and regi
 // src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
-import multipart from '@fastify/multipart';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -36,10 +35,9 @@ async function bootstrap() {
   );
 
   // Register the fastify-multipart plugin
-  await app.register(multipart, {
-    // Optional: Configure limits for security
+  await app.register(require('@fastify/multipart'), {
     limits: {
-      fileSize: 10 * 1024 * 1024, // e.g., 10 MB limit
+      fileSize: 10 * 1024 * 1024, 
     },
   });
 
@@ -47,358 +45,257 @@ async function bootstrap() {
 }
 bootstrap();
 ```
-We first set our NestJs app to use `NestFastifyApplication` after that we use the multipart plugin `await app.register(multipart` so we could upload files we add some configuration for the upload functionality , the file size if 10 MB, user can't upload larger fiiles
+We first set our NestJs app to use `NestFastifyApplication` after that we registered the multipart plugin using `await app.register(require('@fastify/multipart')`,  we added some configuration for the upload functionality, user can't upload filer larger then 10 MB.
 #### File Storage and Serving
-After we setting the upload plugin we need to set additional plugin for serving the files that user upload, we install
+After we setting the upload plugin we need to set additional plugin for serving the files, we install the `@fastify/static` plugin
 ```shell
 npm install @fastify/static
 ```
-After that we edit the ``main.ts`` to use this plugin.
+After that we regster this plugin inside our ``main.ts`` file.
 
 **`src/main.ts`**
 ```ts
-// src/main.ts (updated)
-// ... imports
-import fastifyStatic from '@fastify/static';
 import { join } from 'path';
 
-async function bootstrap() {
-  // ... FastifyAdapter setup
-
-  // Register static assets to serve uploaded files from a 'uploads' directory
-  await app.register(fastifyStatic, {
-	root: join(__dirname, '..', 'uploads'), // 'uploads' folder relative to dist
-	prefix: '/media/', // Files accessible at http://localhost:3000/media/filename.jpg
+  // Register this inside the boostrap function
+  await app.register(require('@fastify/static'), {
+	root: join(__dirname, '..', 'uploads'), 
+	prefix: '/media/', 
   });
-  // ... rest of the setup
-}
+
 ```
-The application will upload our files to `uploads/`  which live in same level as the `src` folder, the application will server them inder the ``/media`` route
+We set the application to serve our media from `uploads/` folder which live in same level as the `src` folder, the application will server them under the ``/media`` route, If the folder don't exist we need to create it or our app will crash.
 ### Setting the Templates
 After configuring the file upload we need to, create templates for uplading and displaying the images we want to upload, we start by installing the view plugin and the handelbars engine
 ```
 npm install @fastify/view handlebars
 ```
-Then we add the configuration to our ``main.ts`` file
+Then we aregister the plugin inside our ``main.ts`` file
 ```ts
 // other imports
-import fastifyView from '@fastify/view';
-import * as handlebars from 'handlebars';
+import * as handlebars from 'handlebars'; //we add this import
 
-async function bootstrap() {
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    new FastifyAdapter(),
-  );
-// other code
- app.register(fastifyView, {
+// we regisrer the plugin inside boostrap function
+ app.register(require('@fastify/view'), {
     engine: {
       handlebars: handlebars,
     },
     templates: join(__dirname, '..', 'views'), // Path to templates
 
-  });
-  
-// other code
-  
+  }); 
 ```
-This will set the views folder as the template folder, we create and store our template there.
-### Setting The main module
-We also need to serve styles and other static files for our app so we configure the ``main.ts`` to serve, static files from the ``public`` folder   
-First we install the package
-```shell
-npm install @nestjs/serve-static
-```
-After that we register the new route by adding the following to our ``main.ts``
+### Setting static files
+We also need to serve styles and other static files for our app, so we configure the ``main.ts`` to serve, static files from the ``public`` folder.to do that we register the ``'@fastify/static'`` plugin with new route.
 ```ts
- await app.register(fastifyStatic, {
-    root: join(__dirname, '..', 'public'), // 'public' folder relative to dist
-    prefix: '/public/', // Files accessible at http://localhost:3000/public/style.css
+ //we add this inside the boostrap function
+ await app.register(require('@fastify/static'), {
+    root: join(__dirname, '..', 'public'),
+    prefix: '/static/', 
     decorateReply: false, // Important for registering multiple static routes
   });
 ```
-### Image Sharing Module
-After we finish making our configuration we create new module and controller to handel uplading and displaying images, We first creating the files using the following commands
+### Image Sharing Resource
+After we finishing the configuration, its time to create our image sharing resource, it will handel uploading and displaying images.
 ```shell
-nest generate module image-share
-nest generate controller image-share
-nest generate service image-share
+nest generate resource image-share
+```
+#### Creating The Entity and DTO
+We start by installing the packages that will handel data validation and the databse connection
+```
+npm install @nestjs/typeorm typeorm sqlite3 class-validator class-transformer
+```
+After that we add the database connection configuration to our `app.module.ts` imports
+```ts
+import {TypeOrmModule} from '@nestjs/typeorm'; // we add this import
+//...
+
+// We add this to the imports
+TypeOrmModule.forRoot({ 
+      type: 'sqlite',
+      database: 'db.sqlite', 
+      entities: [__dirname + '/**/*.entity{.ts,.js}'], 
+      synchronize: true, 
+    }),
+```
+We create now our entity we need to save image id, name and path.  
+**``image-share/entities/image-share.entity.ts``**
+```ts
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+@Entity()
+export class ImageShare {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ unique: true})
+  name: string;
+
+  @Column({ unique: true})
+  path: string;
+
+}
+```
+We register then the entity in our ``image-share.module``
+```ts
+// we import this
+import {ImageShare} from './entities/image-share.entity' 
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+//...
+// we add the following to the @Module decorator
+imports:[TypeOrmModule.forFeature([ImageShare])],
+```
+Finally we create the data validator.   
+**`image-share/dto/create-image-share.dto.ts`**
+```ts
+import { IsString, IsNotEmpty} from 'class-validator';
+
+export class CreateImageShareDto  {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  path: string;
+}
+```
+And we register validatio inside our ``main.ts`` configuration 
+```ts
+import { ValidationPipe } from '@nestjs/common'; // we add this import
+  
+  // we add this inside the boostrap function
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
 ```
 #### Creating Service
-We first need create service to handel saving data, we will use in-memory and store data on list to keep things simple
+Now lets Create the Service that will handel our, app logic, we will create four methods
+
+- `findAll` It return all the images from our database
+- `createImage` This method recive createImageDto and use it to create new record in our database, if it fail it throw error
+- `saveImage` In this method we saving the file in our server, we first check it type, if it not 'image/jpeg', 'image/png' server will throw error, else it generate uid and use it as file name (this will insure images wont have same name), after that we saving our image in the upload file, then calling `createImage` to save the image in our database
+- `handelForm` Finally this method extract file from our Form and send it to `saveImage`, if there is no file in our Form or if it fail to save the file it throw error.  
+
 
 **`src/image-share/image-share.service.ts`**
 ```ts
-import { Injectable } from '@nestjs/common';
-import { MultipartFile } from '@fastify/multipart';
+import { Injectable ,BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { MultipartFile, Multipart } from '@fastify/multipart';
 import { createWriteStream } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-
-export interface ImageMetadata {
-  id: string;
-  originalFilename: string;
-  mediaPath: string;
-}
-
-const images: ImageMetadata[] = [];
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { ImageShare } from './entities/image-share.entity'
+import { CreateImageShareDto } from './dto/create-image-share.dto'
 
 @Injectable()
 export class ImageShareService {
-  async saveImage(file: MultipartFile): Promise<ImageMetadata> {
-    
+   constructor(
+    @InjectRepository(ImageShare)
+    private imagesRepository: Repository<ImageShare>
+  ) {
+  }
+  
+  async findAll(): Promise<ImageShare[]> {
+    return  this.imagesRepository.find();
+  }
+
+  async createImage(createImageDto: CreateImageShareDto){
+    const newImage = this.imagesRepository.create(createImageDto);
+    if (!newImage){
+      throw new InternalServerErrorException('Couldn\'t save the Image');
+    }
+    this.imagesRepository.save(newImage)
+  }
+
+  async saveImage(file:MultipartFile){
+    const  allowedTypes:string[] = ['image/jpeg', 'image/png'];
+    if(!allowedTypes.includes(file.mimetype)){
+      throw new BadRequestException('Not Allowed format.');
+    }
     const fileExtension = file.filename.split('.').pop();
     const uniqueId = randomUUID();
-    const newFilename = `${uniqueId}.${fileExtension}`;
-    const filePath = join(process.cwd(), 'uploads', newFilename);
-
+    const name = `${uniqueId}.${fileExtension}`;
+    const filePath = join(process.cwd(), 'uploads', name );
     await new Promise<void>((resolve, reject) => {
-      const writeStream = createWriteStream(filePath);
+      const writeStream = createWriteStream( filePath  );
       file.file.pipe(writeStream)
         .on('finish', resolve)
         .on('error', reject);
     });
-    
-    const uploadedFile: ImageMetadata = {
-      id: uniqueId,
-      originalFilename: file.filename,
-      mediaPath: `/media/${newFilename}`, 
-    };
-    
-    images.push(uploadedFile); 
-    
-    return uploadedFile;
+    const path = 'media/' + name 
+    this.createImage({name,path} as CreateImageShareDto)
   }
 
-  getAllImages(): ImageMetadata[] {
-    return images;
+  async handelForm(Form:AsyncIterableIterator<Multipart>){
+    try {
+      let uploadedCount = 0;
+      for await (const part of Form) {
+        if (part.type === 'file') {
+          await this.saveImage(part);
+          uploadedCount++;
+          break;
+        }
+      }
+      if (uploadedCount === 0) {
+        throw new BadRequestException('No file part found in the request.');
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      throw new InternalServerErrorException('File upload failed due to a server error.');
+    }
   }
 }
 ```
-This service handles image uploads and storage.  
-We first define an interface that describes the structure of the image metadata we want to store in memory. It includes:
-- `id`: a unique identifier for each image
-- `originalFilename`: the original name of the uploaded file
-Next, we create the service, which contains two main methods:
-
-**`saveImage()`** receives the uploaded file, generates a unique filename, saves the file to the `uploads` directory, and stores its metadata in memory. It then returns the stored information so the client can access the uploaded image it work as following:
-- **Extract the file extension**  
-    The service reads the original filename and grabs the file extension (e.g., `.png`, `.jpg`) so the new file keeps the correct type.
-- **Generate a unique filename**  
-    It uses `randomUUID()` to create a unique ID, ensuring no files overwrite each other.  
-    Then it combines the ID with the extension to form a new filename like `a1b2c3d4.jpg`.
-- **Build the file path**  
-    It creates the full path to where the file will be stored inside the `uploads` folder.
-- **Save the file to disk**  
-    The uploaded file stream is piped into a `createWriteStream`, which writes the file physically on the server's disk.  
-    It waits until the file finishes writing, or throws an error if something goes wrong.
-- **Create metadata**  
-    After the file is saved, it builds an object containing:
-    - The unique ID
-    - The original filename
-    - The publicly accessible media path (e.g., `/media/a1b2c3d4.jpg`)
-- **Store metadata in memory**  
-    This metadata object is pushed into the `images` array, acting like a temporary database.
-- **Return the image metadata**  
-    Finally, it returns the metadata so the controller can send a response to the user.
-
-**`getAllImages()`**  returns all saved image metadata from our in-memory list, allowing us to retrieve and display all uploaded images.
 #### Creating The Controller
-Now we create the controller to handel our requests
+Finally we create Controller to handel our request, it handel two routes.  
+- `@Get()` Here we rendering the upload templates with all images that are saved in our database
+- `@Post('upload')` Here reciving post request,  we check if it `Multipart`, then we use the `imageShareService` to store the images submitted by user, if request isn't `Multipart` we throw error.
+
+
 **`src/image-share/image-share.controller.ts`**
 ```ts
-import {Render,Redirect, Controller, Post, Get, Req, Res, BadRequestException, InternalServerErrorException } from '@nestjs/common';
-import type { FastifyReply, FastifyRequest } from 'fastify';
-import { ImageShareService, ImageMetadata } from './image-share.service'; // Import the Service
+import {Render,Redirect, Controller, Post, Get, Req,BadRequestException} from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
+import { ImageShareService} from './image-share.service';
+import { ImageShare } from './entities/image-share.entity'
 
 @Controller('images')
 export class ImageShareController {
-  constructor(private readonly imageShareService: ImageShareService) {}
+  constructor(private readonly imageShareService: ImageShareService) {}
 
-  @Get()
-  @Render('upload')
-  async getUploadForm(@Res({passthrough:true}) res: FastifyReply) {
-    const images: ImageMetadata[] = this.imageShareService.getAllImages();
-    return { images };
-  }
+  @Get()
+  @Render('upload')
+  async getUploadForm() {
+    const images: ImageShare[] = await this.imageShareService.findAll();
+    return { images };
+  }
 
-  @Post('upload')
-  @Redirect('/images')
-  async uploadImage(@Req() req: FastifyRequest, @Res({passthrough:true}) res: FastifyReply) {
-    if (!req.isMultipart()) {
-      throw new BadRequestException('Request must be multipart/form-data.');
-    }
-
-    try {
-      const parts = req.parts();
-      let uploadedCount = 0;
-      for await (const part of parts) {
-        if (part.type === 'file') {
-          await this.imageShareService.saveImage(part);
-          uploadedCount++;
-          break;
-        }
-      }
-      if (uploadedCount === 0) {
-        throw new BadRequestException('No file part found in the request.');
-      }
-    } catch (error) {
-      console.error('File upload error:', error);
-      throw new InternalServerErrorException('File upload failed due to a server error.');
-    }
-  }
+  @Post('upload')
+  @Redirect('/images')
+  async uploadImage(@Req() req: FastifyRequest) {
+    if (!req.isMultipart()) {
+      throw new BadRequestException('Request must be multipart/form-data.');
+    }
+    const parts = req.parts();
+    return this.imageShareService.handelForm(parts)
+  }
 }
 ```
-This controller manages the routes for uploading and displaying images. It works alongside the `ImageShareService` to handle incoming requests, show uploaded images, and process file uploads from users.
-
-We first inject the `ImageShareService` so the controller can call its methods to save files and retrieve stored image data.
-
-The controller contains two main route handlers:
-
-**`@Get()`  Display the upload form and images:**
-
-This method renders an HTML page that shows the upload form and previously uploaded images.
-
-- **Fetch stored images**  
-    It calls `getAllImages()` from the service to retrieve all saved image metadata.
-    
-- **Render the template**  
-    It uses `res.view()` to render the `upload` page and passes the list of images so they can be displayed in the UI.
-    
-
-**`@Post('upload')` Handle file uploads**
-
-This method receives the uploaded file from the user and saves it using the service.
-
-It works as follows:
-
-- **Check request format**  
-    Ensures the request is `multipart/form-data` (required for file uploads). If not, it throws a `BadRequestException`.
-    
-- **Process incoming file parts**  
-    Uses `req.parts()` to loop through incoming parts of the request and look for a file upload.
-    
-- **Save uploaded file**  
-    When it finds a file part, it calls `saveImage()` from the service to store the file and metadata, then increases `uploadedCount`.
-    
-- **Handle missing file**  
-    If no file is found in the request, it throws a `BadRequestException` to notify the client.
-    
-- **Redirect after success**  
-    Once the file is uploaded successfully, it redirects the user back to `/images` so they can see the uploaded image.
-    
-- **Error handling**  
-    Catches any internal error during the upload process, logs it, and returns an `InternalServerErrorException` if something goes wrong.
-
 ### Creating the Templates
-Now finally we create the template, to display the form that upload files and display all uploaded images.
+Now finally we create the template, to display uploading images form and show all uploaded images, we will use the `upload.hbs` template from `material` folder, we save it under ``views`` folder inside our project, same for style we use ``style.css`` file from `material` folder, and we save it under ``public`` folder inside our project.
 
-**`views/upload.hbs`**
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Uploader</title>
-    <link rel="stylesheet" href="/public/style.css"> </head>
-<body>
-    <h1>Image Uploader </h1>
-    
-    <div class="upload-section">
-        <h2>Upload a New Image</h2>
-        <form action="/images/upload" method="POST" enctype="multipart/form-data">
-            <input type="file" name="file" accept="image/*" required>
-            <button type="submit">Upload Image</button>
-        </form>
-    </div>
-
-    <hr>
-
-    <div class="gallery">
-        <h2>Uploaded Images ({{images.length}})</h2>
-        {{#if images}}
-            <div class="image-grid">
-                {{#each images}}
-                <div class="image-card">
-                    <p class="filename">{{this.filename}}</p>
-                    <img src="{{this.mediaPath}}" alt="{{this.filename}}">
-                    <p class="path-info">Path: <code>{{this.mediaPath}}</code></p>
-                </div>
-                {{/each}}
-            </div>
-        {{else}}
-            <p>No images have been uploaded yet.</p>
-        {{/if}}
-    </div>
-</body>
-</html>
+With this set we can run our project using 
 ```
-#### Styles
-For styles we use the style from the materials folder
-
+npm run start:dev
+```
+visiting the `/images` route will display, small form to upload images, if we upload image, we will see it added bellow the form 
 
 ## Project Configuration in NestJS
-In the previous sections, we built applications using default NestJS settings and the Fastify platform. While these defaults are excellent for getting started, real-world projects require more specific configurations for handling static assets, connecting to various databases, managing environment variables, and organizing module-based routing.
-### Static Files and Assets Configuration
-In NestJS especially when using the Fastify adapter, we use a specific plugin, **`@fastify/static`** to help use serve static files,  we register it our `main.ts` file to map a file system folder to a public URL route.  
-#### Serving Static Assets (CSS, JS, Logos)
-In NestJS, we centralize our application's design assets (CSS, JavaScript, logos) in a directory (commonly named `public/`) at the project root. We use the **`@fastify/static`** plugin to serve this folder.
-
-**Implementation in `src/main.ts`**
-We must install the package and register it with the Fastify adapter:
-```
-npm install @fastify/static
-```
-Then we configure it in our main.ts file as following
-```ts
-
-await app.register(fastifyStatic, {
-root: join(__dirname, '..', 'public'), // 'public' folder relative to dist
-prefix: '/public/', // Publicly accessible at http://localhost:3000/public/
-decorateReply: false, // Important for registering multiple static roots
-});
-
-```
-- **`root`**: Defines the **physical source** directory on our server's disk (`public` or `uploads`).
-    
-- **`prefix`**: Defines the **URL path** through which the files will be accessible in the browser (e.g., `/public/style.css`).
-
-### Templates and View Engine Configuration
-In a NestJS application configured to serve server-side rendered (SSR) views (as shown with Handlebars in the previous guide), we explicitly configure the view engine and the template source folder. This is managed by the **`@fastify/view`** plugin.
-#### Centralized Templates Directory
-To ensure all modules can share layout files (like `base.hbs`) and view components, we define a single `views` directory at the project root.
-
-**Implementation in `src/main.ts`**
-
-We must install the package and configure it in `main.ts` (along with the required view engine, e.g., Handlebars):
-
-```
-npm install @fastify/view handlebars
-```
-Then we configure our the `views` folder to hold our templates as following
-```ts
-// src/main.ts (View Engine configuration)
-// ... imports
-import fastifyView from '@fastify/view';
-import * as handlebars from 'handlebars';
-
-async function bootstrap() {
-  // ... Adapter setup
-
-  await app.register(fastifyView, {
-    engine: {
-      handlebars: handlebars,
-    },
-    templates: join(__dirname, '..', 'views'), // Path to centralized templates
-  });
-  
-  // ... rest of setup
-}
-```
-- **`templates: join(__dirname, '..', 'views')`**: This setting tells the view engine where to find our Handlebars files. This centralized location makes sharing templates, such as a main `base.hbs` layout, simple and clean across all our application modules.    
-- The **`@Render()`** decorator in our controllers will look for the specified file name inside this central directory.
-    
 ### Database Configuration with TypeORM/Prisma 
 NestJS heavily favors using robust ORMs like TypeORM or Prisma (which acts as a connection layer) for database interaction. The configuration for database connectivity is typically managed using the **`@nestjs/config`** module and placed within the **`AppModule`** or a dedicated Database module.
 #### Using the `@nestjs/typeorm` Module
@@ -544,3 +441,283 @@ export class ImageShareService {
 }
 ```
 This structure ensures that sensitive data (like database credentials, API keys, etc.) is managed outside the codebase and accessed in a standardized, type-safe manner, which is a significant improvement in project security and maintainability.
+
+## Exploring Pipes, Guards, and Interceptors
+In any robust backend application, an incoming HTTP request must pass through several stages before it reaches the business logic and returns a response. NestJS formalizes this process using Pipes, Guards, Interceptors, and Exception Filters. These tools allow us to cleanly separate concerns like validation, authorization, logging, and error handling from the main controller and service logic.
+
+### Request Lifecycle
+The NestJS request pipeline follows a predictable path. A request enters our application and proceeds through the components in this specific order:
+- **Incoming Request:** The request hits the server.
+- **Guards:** Checks authorization (e.g., Is the user logged in? Does the user have the required role?). If a Guard fails, the request is blocked immediately.
+- **Interceptors (Pre-Controller):** Logic executed before the controller handler runs (e.g., logging the request).
+- **Pipes (Parameter-level):** Validation and transformation of data for specific route parameters (e.g., ensuring an ID is a valid number, validating the DTO body).
+- **Controller Handler:** Our main business logic starts executing.
+- **Service/Database Logic:** The service executes the core logic.
+- **Interceptors (Post-Controller):** Logic executed after the controller/service returns, allowing us to transform the final result or handle the promise (e.g., caching, standardizing the response format).
+- **Exception Filters:** If any component (Guard, Pipe, Controller, Service) throws an exception, the Exception Filters catch it and standardize the HTTP error response.
+- **Outgoing Response:** The final response is sent back to the client.
+
+### Pipes: Validation and Transformation
+Pipes are classes decorated with `@Injectable()` that implement the `PipeTransform` interface. They execute immediately before a controller handler is called, operating directly on the arguments.
+#### Data Validation with `ValidationPipe`
+The built-in `ValidationPipe` is the most common use case. we use it to validate the data that sent by the users, it ensure incoming data meets the structural and content rules defined in our DTOs.  
+```ts
+import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+export class CreateTodoDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  title: string;
+
+  @IsString()
+  @IsNotEmpty()
+  description: string;
+}
+```
+To apply validation automatically across the entire application, set the global `ValidationPipe` in `main.ts`:
+```ts
+app.useGlobalPipes(new ValidationPipe({
+  whitelist: true,
+  forbidNonWhitelisted: true,
+  transform: true,
+}));
+```
+Now NestJS will validate the request body automatically whenever we use the DTO:
+```ts
+async addTask(@Body() createTodoDto: CreateTodoDto, @Res({ passthrough: true }) res: FastifyReply,@Request() req)
+```
+By specifying `@Body() createTodoDto: CreateTodoDto`, NestJS checks the request data according to the rules defined in `CreateTodoDto`.
+#### Building Custom Pipes
+We can build custom pipes to handle specific transformations, for example a custom pipe can be used to convert an incoming string ID (from a URL path) directly into a database entity object, simplifying controller code.  
+**``src/common/pipes/parse-int.pipe.ts``**
+```ts
+import { ArgumentMetadata, Injectable, PipeTransform, BadRequestException } from '@nestjs/common';
+@Injectable()
+
+export class ParseIntPipe implements PipeTransform<string, number> {
+  transform(value: string, metadata: ArgumentMetadata): number {
+    const val = parseInt(value, 10);
+    if (isNaN(val)) {
+      throw new BadRequestException('Validation failed: Parameter is not an integer.');
+    }
+    return val;
+    }
+  }
+```
+here we created transformer that implement the `PipeTransform<string, number>` interface it have one method ``transform`` it transform ``string`` value to ``int`` and throw error if value not valide, we use it as following
+
+```ts
+import { ParseIntPipe } from '../common/pipes/parse-int.pipe';
+
+@Get(':id')
+findOne(@Param('id', ParseIntPipe) id: number) {
+  return this.todoService.findOne(id);
+}
+```
+We use the ``ParseIntPipe`` it transform the id from `string` to `int`
+### Guards: Authorization and Access Control
+Guards, which implement the `CanActivate` interface, are responsible for authorization. They decide whether a request is allowed to proceed based on conditions like user roles, permissions, or time-of-day. Guards are executed before any interceptors or pipes.
+#### Understanding the Execution Context
+The `canActivate()` method receives an `ExecutionContext` object. This object gives you access to the underlying request details for the current context (HTTP, WebSockets, or gRPC)
+```ts
+import { ExecutionContext, CanActivate } from '@nestjs/common';
+
+export class AdminGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const req = context.switchToHttp().getRequest();
+    const user = req.user;
+    return user && user.roles.includes('admin');
+  }
+}
+```
+This Guard get the user from the reuest and check if it admin or not if he is adming the request proccess else it will block
+#### Authorization Guards
+We already implemented the `Gues` and the `Authorized` guard. A powerful use of Guards is for Role-Based Access Control (RBAC).     
+To check for a specific role:
+1. **Define Roles (Metadata):** Use a custom decorator and the `@SetMetadata()` decorator to attach role requirements to a controller method.
+2. **Check Roles (Guard):** Create a generic `RolesGuard` that reads this metadata and compares it against the user's roles.
+This pattern allows us to define complex access rules with a single line:
+```ts
+@Post()
+@SetMetadata('roles', ['admin', 'manager'])
+async create(@Body() createTodoDto: CreateTodoDto) { /* ...*/ }
+
+// 2. The RolesGuard checks if the authenticated user has at least one of these roles
+@UseGuards(Authorized, RolesGuard)
+
+@Controller('todos') export class TodoController { /* ... */ }
+
+```
+The `@Post()` endpoint has metadata specifying allowed roles (`admin` and `manager`) using `@SetMetadata('roles', [...])`. When a request is made, the `RolesGuard` reads this metadata and checks if the authenticated user (validated by the JWT `AuthGuard`) has at least one of the required roles. If the user doesn't have a matching role, access is denied; otherwise, the action is allowed.
+### Interceptors:
+Interceptors implement the `NestInterceptor` interface and allow us to bind extra logic before or after the execution of the main controller handler.
+#### Response Transformation
+Interceptors often transform the final data structure, ensuring all API responses conform to a unified format (e.g., wrapping data in a `data` key).
+
+```ts
+import { NestInterceptor, ExecutionContext, CallHandler, Injectable } from '@nestjs/common';
+import { map } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+
+interface Response<T> { data: T; }
+@Injectable()
+export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>> {
+    return next.handle().pipe( map(data => ({
+      statusCode: context.switchToHttp().getResponse().statusCode,
+      timestamp: new Date().toISOString(),
+      data: data,
+      })
+    ),
+    );
+  }
+}
+```
+This interceptor automatically formats every response returned by our controllers. When a request is processed, the interceptor lets the handler run, then uses `map()` to wrap the original response data in a consistent structure. It adds useful extra fields  such as the HTTP status code and a timestamp and places the controller's actual output inside a `data` field. This helps enforce a unified API response format across the application without changing each controller manually.
+#### Logging and Timing
+Interceptors are ideal for timing requests, as they can execute logic both before the controller is called and after the final result is available.
+```ts
+import { tap } from 'rxjs/operators';
+
+@Injectable()
+export class LoggingInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const now = Date.now();
+    console.log(`[REQUEST] ${context.getClass().name} starting...`);
+    return next.handle().pipe(
+      tap(() => console.log(`[RESPONSE] Completed in ${Date.now() - now}ms`)),
+    );
+  }
+}
+```
+We can apply these using `@UseInterceptors(TransformInterceptor)` at the controller, method, or global level.
+### Exception Filters
+When an exception is thrown in any part of the lifecycle (Pipe, Guard, Interceptor, or Service), NestJS's default handler catches it and sends a generic response. Exception Filters allow us to customize and standardize this error handling globally.
+#### Handling and Standardizing Error Responses Globally
+By default, NestJS handles built-in exceptions like `NotFoundException` and `BadRequestException` correctly. But we can edit the default behaviour of exception handeling by catching all exceptions and ensure a standard response format, we do that using a global filter.   
+
+**``src/common/filters/http-exception.filter.ts``**
+```ts
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
+import { FastifyReply } from 'fastify';
+
+@Catch() // Catches all types of exceptions
+export class AllExceptionsFilter implements ExceptionFilter {
+  catch(exception: unknown, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<FastifyReply>();
+    const request = ctx.getRequest();
+
+    const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    const message = exception instanceof HttpException ? (exception.getResponse() as any)?.message || exception.message : 'Internal server error';
+
+    response.status(status).send({
+      statusCode: status,
+      timestamp: new Date().toISOString(),
+      path: request.url,
+      message: message,
+    });
+  }
+}
+```
+In this filter, we create a global exception handler that catches all exceptions thrown by the application. Inside the ``catch`` method, we first switch to the HTTP context and retrieve the request and response objects.  
+We then check whether the thrown exception is an instance of ``HttpException``, if it is, we extract the HTTP status code and response message from it, Otherwise, we treat it as an internal server error and use status code 500.
+
+Finally, we send a standardized JSON response that includes:
+- the HTTP status code
+- a timestamp
+- the request path
+- a user-friendly error message
+
+This ensures consistent and clean error responses across the entire API.
+
+To use this filter globally, we need to register it in our `main.ts`:
+```ts
+
+import { AllExceptionsFilter } from './common/filters/http-exception.filter'; // we import it
+
+  // we add it inside the boostrap function
+  app.useGlobalFilters(new AllExceptionsFilter());
+
+```
+#### Creating Custom Exception Filters for Specific Errors
+We can also create a filter to handle only a specific, non-HTTP exception type from our business logic,Lets create `NotFoundException`, exception filter.
+
+```ts
+import { ExceptionFilter, Catch, ArgumentsHost, NotFoundException } from '@nestjs/common';
+import { FastifyReply } from 'fastify';
+
+@Catch(NotFoundException ) // Catches all types of exceptions
+export class NotFoundExceptionFilter implements ExceptionFilter {
+  catch(exception: unknown, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<FastifyReply>();
+
+    (response.status(404)as any).view("noFound");
+  }
+}
+```
+This filter will catch exception that will raise when user visit non exist endpoint and then render the "noFound" template.
+
+we register it in our ``main.ts`` file using
+```ts
+import { NotFoundExceptionFilter } from './common/filters/noFound-exception.filter'; // we import it
+
+// we register it inside the boostrap function
+    app.useGlobalFilters(new NotFoundExceptionFilter());
+```
+### Custom Parameter Decorators
+Custom Parameter Decorators (e.g., `@User()`) abstract away the boilerplate of manually extracting data from the request object in every controller. They leverage the `createParamDecorator` function.
+
+#### Building `@User()` Decorators
+Lets create simple `@File()` decorator extract the file from the Form and remove. instead using service
+
+**``src/parameter_decorators/parameter.decorator.form.ts``**
+```ts
+import { createParamDecorator, ExecutionContext,BadRequestException,InternalServerErrorException } from '@nestjs/common';
+import {MultipartFile} from '@fastify/multipart'
+export const File = createParamDecorator(
+
+  async (data: unknown, ctx: ExecutionContext):Promise<MultipartFile|null> => {
+
+    const request = ctx.switchToHttp().getRequest(); 
+    if (!request.isMultipart()) {
+      throw new BadRequestException('Request must be multipart/form-data.');
+    }
+    const parts = request.parts();
+    try {
+      let uploadedCount = 0;
+      for await (const part of parts) {
+        if (part.type === 'file') {
+          return part;
+          
+        }
+      }
+      if (uploadedCount === 0) {
+        throw new BadRequestException('No file part found in the request.');
+        
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      throw new InternalServerErrorException('File upload failed due to a server error.');
+    }
+    return null;
+}   
+)
+```
+We user Custom Parameter Decorators to retrive the file from the user post request, now we can use this File inside our controller
+
+```ts
+import {MultipartFile} from '@fastify/multipart' // we add this
+import {File} from 'src/parameter_decorators/parameter.decorator.form' // we import our type
+
+
+// Our route become as following
+@Post('upload')
+  @Redirect('/images')
+  async uploadImage(@File() file:MultipartFile|null) {
+    return this.imageShareService.saveImage(file as MultipartFile)
+  }
+
+```
+We can see our route become more clean now, we are retriving the file directly by using the File decorator, then inside the controller method we are using ``saveImage`` to save our file.
