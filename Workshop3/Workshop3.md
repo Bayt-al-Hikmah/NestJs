@@ -1,8 +1,7 @@
 ## Objectives
 - Working with Database and Models  
 - Authentication and Session Management  
-- Exploring Pipes, Guards, and Interceptors
-## Databases, TypeScript, and NestJS ORMs
+## Databases and NestJS ORMs
 In our previous workshop, we created feedback application and we used TypeScript array to store users feedback, this work but the data  only in the server's RAM (memory), meaning it’s temporary, as soon as the NestJS server restarts, shuts down, or crashes whether due to maintenance, updates, or deployment all the information in that array is instantly lost.   
 To build real, reliable backend services, we need a way to store data permanently, so it remains available even after the server restarts. This is where databases come in.
 ### Database
