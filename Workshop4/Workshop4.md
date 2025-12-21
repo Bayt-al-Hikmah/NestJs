@@ -1,7 +1,7 @@
 ## Objectives
 - Upload and manage files efficiently
-- Work with settings files and project configuration
-
+- Work with Project Configuration
+- Exploring Pipes, Guards, and Interceptors
 ## Upload and Manage Files Efficiently in NestJS
 NestJS offers a powerful and flexible way to handle file uploads. This involves using  `@fastify/multipart` to handle `multipart/form-data`, which is primarily used for file uploads.
 ### Introduction
@@ -550,9 +550,10 @@ async create(@Body() createTodoDto: CreateTodoDto) { /* ...*/ }
 ```
 The `@Post()` endpoint has metadata specifying allowed roles (`admin` and `manager`) using `@SetMetadata('roles', [...])`. When a request is made, the `RolesGuard` reads this metadata and checks if the authenticated user (validated by the JWT `AuthGuard`) has at least one of the required roles. If the user doesn't have a matching role, access is denied; otherwise, the action is allowed.
 ### Interceptors:
-Interceptors implement the `NestInterceptor` interface and allow us to bind extra logic before or after the execution of the main controller handler.
-#### Response Transformation
-Interceptors often transform the final data structure, ensuring all API responses conform to a unified format (e.g., wrapping data in a `data` key).
+Interceptors have two type Interceptors (Post-Controller) and Interceptors (Post-Controller).  
+The Post-Controller interceptors run before our controller handler, and in the other hand Post-Controller interceptors run after controller/service returns, to create interceptors we implement the `NestInterceptor`. 
+#### Post-Controller Interceptors
+Post-Controller interceptors often used to transform the final data structure, ensuring all API responses conform to a unified format (e.g., wrapping data in a `data` key). to create Post-Controller we add our code inside   `next.handle().pipe(`.
 
 ```ts
 import { NestInterceptor, ExecutionContext, CallHandler, Injectable } from '@nestjs/common';
@@ -573,24 +574,57 @@ export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> 
   }
 }
 ```
-This interceptor automatically formats every response returned by our controllers. When a request is processed, the interceptor lets the handler run, then uses `map()` to wrap the original response data in a consistent structure. It adds useful extra fields  such as the HTTP status code and a timestamp and places the controller's actual output inside a `data` field. This helps enforce a unified API response format across the application without changing each controller manually.
-#### Logging and Timing
-Interceptors are ideal for timing requests, as they can execute logic both before the controller is called and after the final result is available.
+Here the Post-Controller Interceptors formats every response returned by our controllers. When a request is processed, the interceptor lets the handler run, then uses `map()` to wrap the original response data in a consistent structure. It adds useful extra fields such as the HTTP status code and a timestamp and places the controller's actual output inside a `data` field.
+#### Pre-Controller Interceptors
+We create Pre-Controller Interceptors same way as before, we just put our logic before `next.handle()`,for example we can create Pre-Controller, to log the requests.
 ```ts
-import { tap } from 'rxjs/operators';
-
+import { NestInterceptor, ExecutionContext, CallHandler, Injectable } from '@nestjs/common';
+import { Observable } from 'rxjs';
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const now = Date.now();
     console.log(`[REQUEST] ${context.getClass().name} starting...`);
-    return next.handle().pipe(
-      tap(() => console.log(`[RESPONSE] Completed in ${Date.now() - now}ms`)),
-    );
+    return next.handle();
   }
 }
 ```
-We can apply these using `@UseInterceptors(TransformInterceptor)` at the controller, method, or global level.
+This Pre-Controller Interceptor log every request, sent to the server before the controller hanndel them
+#### Pre-Controller + Post-Controller Interceptors
+Finally we can create mixed Interceptors that run before and after controller, this type of Interceptors for logging the time that controller take to form response
+```ts
+import { NestInterceptor, ExecutionContext, CallHandler, Injectable } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+@Injectable()
+export class LoggingTimeInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext,next: CallHandler,): Observable<any> {
+    const start = Date.now();
+    const request = context.switchToHttp().getRequest();
+
+    console.log(
+      `[REQUEST] ${request.method} ${request.url} - START`,
+    );
+
+    return next.handle().pipe(
+      tap(() => {
+        const time = Date.now() - start;
+        console.log(`[REQUEST] ${request.method} ${request.url} - END (${time}ms)`,);
+      }),
+    );
+  }
+}
+```
+Here create interceptor to log the time that response take ,it get time before the controller run, then after the controller it use ``tap()`` to get substract, the time when the rquest hit controller from the time when it finished making response. and log it to us.  
+We can apply these interceptor by using `@UseInterceptors(LoggingTimeInterceptor)` at the controller, method.  
+If we want to apply interceptor all over our application we register it in our ``main.ts`` file.
+```ts
+  // we add this inside the boostrap function
+  app.useGlobalInterceptors(new LoggingTimeInterceptor());
+```
+#### Remark
+When working with Pre-Controller Interceptor, we can see we using different function `tap` and `map`, we use ``tap`` when we want side-effect post controller like checking the data without editing it. we use `map` when we want to edit the response structre. 
 ### Exception Filters
 When an exception is thrown in any part of the lifecycle (Pipe, Guard, Interceptor, or Service), NestJS's default handler catches it and sends a generic response. Exception Filters allow us to customize and standardize this error handling globally.
 #### Handling and Standardizing Error Responses Globally
