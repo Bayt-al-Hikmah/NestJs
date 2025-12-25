@@ -16,9 +16,9 @@ export class UsersController {
 
   
   @Get('user')
-  async findOne(@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
-    const userSession = parseInt(req.session.get("userId"));
-    const user = await this.usersService.findOne(userSession);
+  async findOne(@Req() req, @Res() reply: FastifyReply) {
+    const userId = parseInt(req.user.userId);
+    const user = await this.usersService.findOne(userId);
     if(!user){
         return reply.status(404).send({ message: 'User not found' });
     }
@@ -27,19 +27,19 @@ export class UsersController {
   }
 
   @Put('user')
-  async updateUser(@File() file,@Fields() fields:UpdateUserDto,@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
-    const userSession = parseInt(req.session.get("userId"));
+  async updateUser(@File() file,@Fields() fields:UpdateUserDto,@Req() req, @Res() reply: FastifyReply) {
+    const userId = parseInt(req.user.userId);
     if(file !== null){
       fields.avatar = await this.authService.uploadAvatar(file);
     }
-    await  this.usersService.updateUser(userSession,fields);
+    await  this.usersService.updateUser(userId,fields);
     return reply.status(201).send({ message: 'User profile updated successfully' });
   }
 
   @Patch('user/password')
-  async updatePassword(@Body() updatePasswordDto: UpdatePasswordDto,@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
-    const userSession = parseInt(req.session.get("id"));
-    await this.usersService.updatePassword(userSession, updatePasswordDto);
+  async updatePassword(@Body() updatePasswordDto: UpdatePasswordDto,@Req() req, @Res() reply: FastifyReply) {
+    const userId = parseInt(req.user.userId);
+    await this.usersService.updatePassword(userId, updatePasswordDto);
     return reply.status(201).send({ message: 'Password updated successfully' });
   }
 }

@@ -1,27 +1,5 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 
 @Injectable()
-export class Authorized implements CanActivate {
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest(); 
-    const res = context.switchToHttp().getResponse(); 
-    const id =  req.session.get("userId");
-    if (!id){
-       return res.status(403).send({message:"Not Authorized"}); 
-    } 
-    return true;
-  }
-}
-
-@Injectable()
-export class Guest implements CanActivate {
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();  
-    const res = context.switchToHttp().getResponse();  
-    const id = req.session.get("userId");
-    if (!id){
-      return true;
-    } 
-    return res.status(403).send({message:"You Aleardy Logged in"}); 
-  }
-}
+export class Authorized  extends AuthGuard('jwt') {}

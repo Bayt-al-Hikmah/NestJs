@@ -1,4 +1,3 @@
-
 const API_BASE = '/api';
 function switchView(viewId) {
     document.getElementById('login-view').style.display = 'none';
@@ -33,13 +32,12 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
     const username = document.getElementById('reg-username').value;
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
-    const avatarFile = document.getElementById('reg-avatar').files[0]; // file input
+    const avatarFile = document.getElementById('reg-avatar').files[0]; 
 
     const formData = new FormData();
     formData.append('username', username);
     formData.append('email', email);
     formData.append('password', password);
-    
     if (avatarFile) {
         formData.append('avatar', avatarFile);
     }
@@ -72,6 +70,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     const data = await response.json();
     if (response.ok) {
         displayMessage('login-message', data.message, false);
+        localStorage.setItem('token', data.access_token);
         document.getElementById('login-form').reset();
         switchView('app-view');
         showTasks();
@@ -97,20 +96,36 @@ function showProfile() {
     displayMessage('profile-message', '');
 }
 async function fetchUserProfile(populateForm) {
-    const response = await fetch(`${API_BASE}/user`);
+    const token = localStorage.getItem('token');
+    console.log(token)
+    const response = await fetch(`${API_BASE}/user`,
+        
+        {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        }
+    );
+
     if (response.status === 401) {
         switchView('login-view');
         return;
     }
+
+    console.log("User profile response status:", response);
+
     if (response.ok) {
         const user = await response.json();
         document.getElementById('nav-username').innerText = user.username;
         const avatarUrl = user.avatar || 'https://via.placeholder.com/32?text=U';
         document.getElementById('nav-avatar').src = avatarUrl;
+        
         if (!populateForm) {
             switchView('app-view');
             showTasks();
         }
+
         if (populateForm) {
             document.getElementById('profile-username').value = user.username;
             document.getElementById('profile-email').value = user.email;
@@ -121,6 +136,7 @@ async function fetchUserProfile(populateForm) {
     }
 }
 async function updateProfile() {
+    const token = localStorage.getItem('token');
     displayMessage('profile-message', 'Saving profile...', false);
     const username = document.getElementById('profile-username').value;
     const email = document.getElementById('profile-email').value;
@@ -135,7 +151,7 @@ async function updateProfile() {
 
     const response = await fetch(`${API_BASE}/user`, {
         method: 'PUT',
-        
+         headers: {'Authorization': `Bearer ${token}`},
         body: formData
     });
 
@@ -150,6 +166,7 @@ async function updateProfile() {
 }
 
 async function updatePassword() {
+    const token = localStorage.getItem('token');
     displayMessage('profile-message', 'Changing password...', false);
     const password = document.getElementById('profile-password').value;
 
@@ -160,7 +177,7 @@ async function updatePassword() {
 
     const response = await fetch(`${API_BASE}/user`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' ,'Authorization': `Bearer ${token}`},
         body: JSON.stringify({ password })
     });
 
@@ -175,7 +192,12 @@ async function updatePassword() {
 }
 
 async function fetchTasks() {
-    const response = await fetch(`${API_BASE}/tasks`);
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/tasks`,{
+        headers: { 'Content-Type': 'application/json' ,'Authorization': `Bearer ${token}`},
+    }
+        
+    );
     if (response.status === 401) return logout();
     const tasks = await response.json();
     const list = document.getElementById('task-list');
@@ -185,7 +207,7 @@ async function fetchTasks() {
         list.innerHTML = '<li style="justify-content: center; color: #888;">No tasks yet! Add one above.</li>';
         return;
     }
-    console.log(tasks)
+
     tasks.forEach(task => {
         const isDone = task.state === 'done';
         const li = document.createElement('li');
@@ -211,14 +233,15 @@ async function fetchTasks() {
 }
 
 async function createTask() {
+    token = localStorage.getItem('token');
     const nameInput = document.getElementById('task-name');
     const name = nameInput.value.trim();
     if (!name) return;
+
     await fetch(`${API_BASE}/tasks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        
-        body: JSON.stringify({ name})
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name: name })
     });
 
     nameInput.value = '';
@@ -226,19 +249,23 @@ async function createTask() {
 }
 
 async function updateTaskState(taskId, newState) {
+    token = localStorage.getItem('token');
     await fetch(`${API_BASE}/tasks/${taskId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ state: newState })
     });
     fetchTasks();
 }
 
 async function deleteTask(taskId) {
+    token = localStorage.getItem('token');
     if(!confirm("Are you sure you want to delete this task?")) return;
 
     await fetch(`${API_BASE}/tasks/${taskId}`, {
         method: 'DELETE',
+         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+         body: JSON.stringify({id:taskId})
     });
     fetchTasks();
 }

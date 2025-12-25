@@ -239,6 +239,7 @@ async function deleteTask(taskId) {
 
     await fetch(`${API_BASE}/tasks/${taskId}`, {
         method: 'DELETE',
+        body: JSON.stringify({id:taskId})
     });
     fetchTasks();
 }

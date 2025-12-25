@@ -2,15 +2,16 @@ import { Controller, Post, Body, Req,Res,UseGuards} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto,LoginDto } from '../users/dto/create-user.dto';
 import type { FastifyRequest,FastifyReply } from 'fastify';
-import type { Session } from '@fastify/secure-session'
 import { File } from 'src/parameter_decorators/parameter.decorator.file'
 import { Fields } from 'src/parameter_decorators/parameter.decorator.fields'
 import type { MultipartFile} from '@fastify/multipart';
-import {Guest} from 'src/guard/authorization.guard'
+import { JwtService } from '@nestjs/jwt';
 @Controller('api')
-@UseGuards(Guest)
+
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService,
+    private jwtService: JwtService
+  ) {}
 
   @Post('register')
   async register(@File() file:MultipartFile,@Fields() fields:CreateUserDto,@Res() res:FastifyReply) {
@@ -26,8 +27,11 @@ export class AuthController {
     if(!user){
     return res.status(401).send({ message: 'Invalid credentials' });
     }
-    (req.session as any).set("userId",String(user.id) );
-    return res.status(201).send({ message: 'logged in' });
+    const payload = {
+      userId:user.id,
+      email:user.email
+    }
+    return res.status(201).send({ message: 'logged in' ,access_token:this.jwtService.sign(payload)});
   }
   
 }

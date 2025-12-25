@@ -13,9 +13,9 @@ export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
   @Get('tasks')
-  async findAll(@Req() req: FastifyRequest,@Res() reply: FastifyReply) {
-    const userSession = parseInt(req.session.get("userId"));
-    const tasks = await this.taskService.findAll(userSession);
+  async findAll(@Req() req,@Res() reply: FastifyReply) {
+    const userId = parseInt(req.user.userId);
+    const tasks = await this.taskService.findAll(userId);
     return reply.status(201).send(tasks.map(task => ({
         id: task.id,
         name: task.name,
@@ -26,9 +26,9 @@ export class TaskController {
  
   }
   @Post('tasks')
-  async create(@Body() createTaskDto: CreateTaskDto,@Req() req: FastifyRequest,@Res() reply: FastifyReply) {
-      const userSession = parseInt(req.session.get("userId"));
-      const newTask = await this.taskService.create(userSession,createTaskDto.name);
+  async create(@Body() createTaskDto: CreateTaskDto,@Req() req,@Res() reply: FastifyReply) {
+      const userId = parseInt(req.user.userId);
+      const newTask = await this.taskService.create(userId,createTaskDto.name);
       if(!newTask){
         return reply.status(401).send({ message: "Couldn't Create task" })
       }

@@ -64,7 +64,7 @@ To use Fastify adapter, so  we need `@nestjs/platform-fastify`. For server-side 
 
 Finally for authentication, we will use `argon2` to securely hash passwords, along with `@fastify/secure-session` and `@fastify/cookie`, to save loged in user in session.
 ```shell
-npm install @nestjs/typeorm typeorm sqlite3 class-validator class-transformer @nestjs/platform-fastify @fastify/view handlebars @fastify/static @fastify/cookie argon2 @fastify/multipart
+npm install @nestjs/typeorm typeorm sqlite3 class-validator class-transformer @nestjs/platform-fastify @fastify/view handlebars @fastify/static @fastify/cookie argon2 @fastify/multipart dotenv
 ```
 ### Creating Resource
 For this project, we need three main resources:
@@ -747,9 +747,10 @@ async function bootstrap() {
 	root: join(__dirname, '..', 'public'), 
 	prefix: '/static/', 
   });
+  require('dotenv').config();
   await app.register(require('@fastify/cookie'))
   await app.register(require('@fastify/secure-session'), {
-    secret: 'aVerySecretaVerySecretKeyaVerySecretKeyaVerySecretKeyaVerySecretKeyKey',
+    secret: process.env.SESSION_SECRET,
     cookie: {
       secure: false,       
       httpOnly: true,      
@@ -797,3 +798,221 @@ The code listens for form submissions and button clicks, then makes API calls us
 Helper functions handle view switching, displaying messages, and ensuring that only logged-in users can access protected sections.
 
 The file is currently in the ``materials`` folder. We should move it  to the ``public/js`` folder so it can be served as a static asset by NestJs.
+### Token-Based Authentication 
+In the current Task Manager API, we use Secure-Session to manage authentication. This approach is effective for traditional web applications where the server and client are closely tied, and the browser handles session cookies automatically.  
+However, modern APIs often require authentication that is stateless and can be easily used by various clients (mobile apps, other servers, JavaScript frontends). This is where Token-Based Authentication comes in.
+#### How Tokens Work
+Instead of the server storing session data for every user (stateful), the server issues a secure, self-contained token (like a JSON Web Token or JWT) upon successful login.
+1. **Client Logs In:** The user sends credentials (username/password) to the `/api/login` endpoint.
+2. **Server Generates Token:** If successful, the server creates a unique token containing the user's ID, expiration time, and a secure signature. The token is returned in the response.
+3. **Client Stores Token:** The frontend (e.g., JavaScript) stores this token (usually in local storage).
+4. **API Access:** For every subsequent request to protected endpoints (e.g., `/api/tasks`), the client includes this token in the `Authorization` header, typically prefixed with `Bearer`.
+5. **Server Verification:** The server receives the request, verifies the token's signature, extracts the user ID, and grants access. No database lookup for a session is required, making the API stateless and faster.
+### Implementing Token Authentication with NestJs
+We use the `@nestjs/jwt` and ``@nestjs/passport`` to impliment the Token Authentication.
+
+First, we install it using:
+```shell
+npm install @nestjs/jwt @nestjs/passport passport passport-jwt
+```
+#### Setting the JWT Token
+We set the auth module to apply the JWT Authentication. and we add `JwtStrategy` to our providers
+```ts
+// we add this to the import
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { JwtStrategy } from './jwt.strategy';
+require('dotenv').config(); // load env variable
+// And inside Module decorator imports we add 
+imports: [
+    PassportModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '1h' },
+    }),// other imports
+  ], 
+
+providers: [AuthService,JwtStrategy],
+```
+- secret is used to sign and verify JWT tokens
+- expiresIn defines token lifetime
+#### Creating the JWT Strategy
+After that we create The JWT Streategy,it is responsible for verifying incoming tokens.  
+**``auth\jwt.strategy.ts``**
+```ts
+import { Injectable } from '@nestjs/common';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor() {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      secretOrKey: process.env.JWT_SECRET,
+    });
+  }
+
+  async validate(payload: any) {
+    return payload;
+  }
+}
+```
+This Strategy extract the token from the ``Authorization`` header,verify it then the decoded payload is attached to `request.user`.
+#### Editing The Guard 
+Now we not using session we need to edit our guards to apply the JWT Authentication
+```ts
+import { Injectable } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+
+@Injectable()
+export class Authorized  extends AuthGuard('jwt') {}
+```
+We now need only one guard, the Authorized it extand the `AuthGuard` and implement the `jwt`. we remove the guard from the `auth.controller`.
+#### Editing the Controller
+Finally we need to edit our controllers, we start by editing the login controller instead of saving userId in session, we generat and return token.
+```ts
+import { Controller, Post, Body, Req,Res,UseGuards} from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { CreateUserDto,LoginDto } from '../users/dto/create-user.dto';
+import type { FastifyRequest,FastifyReply } from 'fastify';
+import { File } from 'src/parameter_decorators/parameter.decorator.file'
+import { Fields } from 'src/parameter_decorators/parameter.decorator.fields'
+import type { MultipartFile} from '@fastify/multipart';
+import { JwtService } from '@nestjs/jwt';
+@Controller('api')
+
+export class AuthController {
+  constructor(private readonly authService: AuthService,
+    private jwtService: JwtService
+  ) {}
+  @Post('register')
+  async register(@File() file:MultipartFile,@Fields() fields:CreateUserDto,@Res() res:FastifyReply) {
+    const filename:string = await this.authService.uploadAvatar(file);
+    fields.avatar = filename
+    await this.authService.register(fields);
+    return res.status(201).send({ message: 'Registred' });
+  }
+  @Post('login')
+  async create(@Body() loginDto: LoginDto, @Req() req: FastifyRequest,@Res() res:FastifyReply) { 
+    const user = await this.authService.login(loginDto);
+    if(!user){
+    return res.status(401).send({ message: 'Invalid credentials' });
+    }
+    const payload = {
+      userId:user.id,
+      email:user.email
+    }
+    return res.status(201).send({ message: 'logged in' ,access_token:this.jwtService.sign(payload)});
+  } 
+}
+```
+We import `JwtService` add it to our ``AuthController``, then generate the token using the `sing` method.
+Finally we edit our tasks and users controller we replace `req.session.get("userId")` with `req.user.userId`. We Also remove the `FastifyRequest` type from the `@Req() req`.
+#### Editing the Javascript
+Now we update our JavaScript to work with JWT authentication. When a user logs in, the backend returns a token, which we store in the browser using:
+```javascript
+localStorage.setItem('token', data.access_token);
+```
+For every subsequent API request, we need to include this token in the **Authorization header** so the backend can verify the user. This is done by adding:
+```js
+'Authorization': `Bearer ${localStorage.getItem('token')}` 
+```
+to the headers of each `fetch` request. This ensures that only authenticated users can access protected endpoints.
+### API Rate Limiting
+As our API gains more users, we need to protect it from abuse, excessive load, and denial-of-service (DoS) attacks. Rate Limiting is the practice of restricting the number of API requests a user (or IP address) can make within a specific time window.
+
+#### Implementing Rate Limiting
+To protect our NestJs application from abuse and excessive requests, we implement rate limiting. Rate limiting helps prevent brute-force attacks, reduces server load, and improves overall API reliability.  
+In NestJs, the most common and recommended solution is the **`@nestjs/throttler`**,We start by installing it using:
+```
+npm install @nestjs/throttler
+```
+#### Installing Redis
+Redis (Remote Dictionary Server) is a very fast, in-memory data store. It is commonly used for caching, sessions, queues, and rate limiting. Because Redis stores data in memory, it is significantly faster than traditional databases, making it ideal for tracking API requests in real time.  
+Redis is used with rate limiting plugin to persist rate-limit data. This allows rate limits to remain consistent even if the server restarts or runs across multiple instances.  
+We install it as following
+
+- Ubuntu / Debian:
+
+```
+sudo apt update
+sudo apt install redis-server
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
+```
+
+- macOS (Homebrew):
+
+```
+brew install redis
+brew services start redis
+```
+
+- Windows Redis is not officially supported on Windows, but we can use **Redis for Windows** provided by the community [Redis for Windows](https://github.com/tporadowski/redis/releases).
+
+After that we install the redis package
+```
+npm install  @nest-lab/throttler-storage-redis ioredis
+```
+#### Create Redis Client
+Now we need to create a Redis connection. 
+**`src/redis/redis.client.ts`** 
+```ts
+import Redis from 'ioredis';
+
+export const redis = new Redis({
+  host: process.env.REDIS_HOST,
+  port: Number(process.env.REDIS_PORT),
+});
+```
+#### Configure Throttler with Redis Storage
+After creating our redis client, we update ``app.module.ts`` to use  Throttler with redis as storage
+```ts
+// we add this to the import
+import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import {redis } from 'src/redis/redis.client'
+
+@Module({
+  imports: [
+     ThrottlerModule.forRoot({
+      throttlers:[{
+      ttl: 60,
+      limit: 100,
+    }],
+    storage: new ThrottlerStorageRedisService(redis) // setting storage to redis
+    }),// other imports
+  ], 
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },// other providers
+  ],
+})
+export class AppModule {}
+```
+- ttl: 60000  time window in mini seconds here we set it to 60000 which mean one minute.
+- limit: 100 mean max 10 requests per minute per IP.
+- storage: we set it to the `ThrottlerStorageRedisService(redis)`
+### Configuring The Routes
+This configuration will work globally in all our application all our routes wiill have rate limit of 10 request per second, we can overwrite this, in our controller for example we can use `@SkipThrottle()` Decorator to skip and don't apply the rate limit for specific route or controller. we can also use `@Throttle(100, 1000)` Decorator to overwrite the rate limit for specific.  
+Example lets make the main route `/` skip the rate limit
+```ts
+import { Controller, Get,Render } from '@nestjs/common';
+import { AppService } from './app.service';
+import { SkipThrottle } from '@nestjs/throttler';
+
+@SkipThrottle()
+@Controller()
+export class AppController {
+  constructor(private readonly appService: AppService) {}
+  @Get()
+  @Render('index')
+  index(){
+  }
+}
+```
+Now the rate limit wont work on this Controller.  
