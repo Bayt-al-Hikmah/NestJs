@@ -3,27 +3,25 @@
 - Building REST API with Nestjs
 ## Shifting from Server-Side Rendering to APIs.
 ### Introduction
-In our past workshops, our apps used server-side rendering. With this approach, each request returned an entire HTML page. The problem is that every time we triggered an action in the web app or navigated to a new URL, the server re-rendered the whole page. This means we ended up downloading the full HTML again, even when only a small part of the page had changed.
+In our past workshops, we used server-side rendering. With this approach, each request returned an entire HTML page. The problem is that every time we triggered an action in the web app or navigated to a new URL, the server re-rendered a whole page. This means we ended up downloading the full HTML again, even when only a small part of the page had changed.
 
-This is referred to as a “Hotwire-like” approach, and while it works, it can slow down the application. Often, we only need to retrieve a small piece of data and update a specific section of the page, rather than reloading everything.
+This is referred to as a “Hotwire-like” approach, and while it works, it slow down the application. Often, we only need to retrieve a small piece of data and update a specific section of the page, rather than reloading everything.
 
 To fix this, we can use an API to send and receive small chunks of data and update just the required parts of the interface.
 ### API
-API (**Application Programming Interface**) is a layer that we add to our web app to connect the frontend with the backend. Our app uses the API to retrieve and send data to the server. The backend receives the data, saves the results, processes whatever is needed, and then returns the updated information to the frontend.   
-APIs make it easier to extend our application and make it available on platforms other than the browser. For example, if we want to build a mobile application for our web app, we only need to create the user interface and connect it to our web server using the API. The same backend logic and data can be reused without any changes.
+API (Application Programming Interface) is a layer that we add to our web app to connect the frontend with the backend. Our app uses the API to retrieve and send data to the server. The backend receives the data, saves the results, processes whatever is needed, and then returns the updated information to the frontend.   
+APIs make it easier to extend our application and make it available on other platforms. For example, if we want to build a mobile application, we only need to create the user interface and connect it to our web server using the API. The same backend logic and data can be reused without any changes.
 
 ![](./api.png)
 
 
 ### Javascript Role
 To use the API in our web application, we rely on JavaScript.  
-JavaScript handles communication with the server by fetching data from the API and then dynamically updating the DOM to reflect that data.
-
-Now, instead of submitting a full form and reloading the page, we can let the user type in an input field, click a button, and then:
-1. **Catch the click event** with JavaScript
-2. **Send a request** to the API    
-3. **Receive the response** from the server
-4. **Update the DOM** using the data from the response
+JavaScript handles communication with the server by fetching data from the API and then dynamically updating the DOM to reflect that data, Instead of submitting a full form and reloading the page, we can let the user type in an input field, click a button, and then:
+1. Catch the click event with JavaScript
+2. Send a request to the API    
+3. Receive the response from the server
+4. Update the DOM using the data from the response
 
 
 This way, only the necessary part of the page changes, and our app becomes much faster and smoother.
@@ -31,29 +29,26 @@ This way, only the necessary part of the page changes, and our app becomes much 
 There are many patterns to design APIs for our web apps, but the most common and beginner friendly one is the REST API.  
 REST stands for Representational State Transfer. It is named this way because the server sends a representation of the requested resource usually as JSON, and the client is responsible for handling the state of the application on its side. 
 ### REST Main Properties
-REST APIs are defined by several **mandatory constraints** that help achieve scalability, simplicity, and performance in a web service.
+REST APIs are defined by several mandatory constraints that help achieve scalability, simplicity, and performance in a web service.
 #### Stateless
 Each request sent to the server must contain all the information needed to process it. The server does not store any information about previous requests. 
 #### Client–Server Separation
-The frontend and backend are separated.  
-The frontend focuses only on the user interface and user experience, while the backend handles data storage and business logic. 
+The frontend and backend are separated, The frontend focuses only on the user interface and user experience, while the backend handles data storage and business logic. 
 #### URLs Identify Resources
-REST treats everything as a resource (users, tasks, posts, products, etc.).  
-Each resource is identified by a clear and meaningful URL, for example:
+REST treats everything as a resource (users, tasks, posts, products, etc.), Each resource is identified by a clear and meaningful URL, for example:
 - `/tasks`
 - `/users/1`
 #### Use of Standard HTTP Methods
 REST relies on standard HTTP methods to describe actions instead of custom commands:
-- **GET** Retrieve data
-- **POST** Create new data
-- **PUT / PATCH** Update existing data
-- **DELETE** Remove data
+- ``GET`` Retrieve data
+- ``POST`` Create new data
+- ``PUT / PATCH`` Update existing data
+- ``DELETE`` Remove data
 
 By following these conventions, REST APIs remain predictable, easy to understand, and consistent across different applications.
 ## Building REST API with NestJs
-Now that we understand how REST APIs work, we will apply these concepts by building a Task Management REST API.
-
-The API will be responsible for registering users, authenticating logins, updating user profiles (including name and profile picture), and displaying, editing, and deleting tasks associated with each user.
+Now that we understand how REST APIs work, we will apply these concepts by building a Task Management REST API.  
+The API will be responsible for registering users, authenticating logins, updating user profiles, and displaying, editing, and deleting tasks associated with each user.
 ### Setting Our Envirenment
 We start by creating new NestJs project using
 ```
@@ -63,19 +58,19 @@ cd workshop5
 ### Installing Packages
 After creating our project, it’s time to install the packages required for our application.
 
-For this project, we will need `@nestjs/typeorm`, `typeorm`, and `sqlite3` to manage the database and work with an SQLite database. We will also use `class-validator` and `class-transformer` to validate submitted data.
+For this project, we will need `@nestjs/typeorm`, `typeorm`, and `sqlite3` to manage the database and work with an SQLite database. We will also use `class-validator` and `class-transformer` to validate the data sent by user.
 
-To use Fastify as the HTTP adapter, we need `@nestjs/platform-fastify`. For server-side rendering, we will install `@fastify/view` and `handlebars` to configure the template engine and the `views` folder. To serve static files such as CSS and client-side JavaScript, we will use `@fastify/static`. The `@fastify/multipart` package will allow us to handle file uploads.
+To use Fastify adapter, so  we need `@nestjs/platform-fastify`. For server-side rendering, we will install `@fastify/view` and `handlebars`. To serve static files we use `@fastify/static`. User will upload avatar picture so we need `@fastify/multipart`.
 
-For authentication, we will use `argon2` to securely hash passwords, along with `@nestjs/passport`, `passport`, `passport-local`, `@nestjs/jwt`, `passport-jwt`, `@types/passport-local`, `@types/passport-jwt`, and `@fastify/cookie`.
+Finally for authentication, we will use `argon2` to securely hash passwords, along with `@fastify/secure-session` and `@fastify/cookie`, to save loged in user in session.
 ```shell
-npm install @nestjs/typeorm typeorm sqlite3 class-validator class-transformer @nestjs/platform-fastify @fastify/view handlebars @fastify/static @fastify/cookie @nestjs/passport passport passport-local @nestjs/jwt argon2 passport-jwt @types/passport-local @types/passport-jwt @fastify/multipart
+npm install @nestjs/typeorm typeorm sqlite3 class-validator class-transformer @nestjs/platform-fastify @fastify/view handlebars @fastify/static @fastify/cookie argon2 @fastify/multipart
 ```
 ### Creating Resource
-For this project, we will work with three main resources:
-- **User** responsible for managing user-related actions such as updating username, password, email, and avatar.    
-- **Task**  responsible for creating, reading, updating, and deleting tasks that belong to authenticated users.
-- **Auth** responsible for registration and login 
+For this project, we need three main resources:
+- User: responsible for managing user-related actions such as updating username, password, email, and avatar.    
+- Task:  responsible for creating, reading, updating, and deleting tasks that belong to authenticated users.
+- Auth: responsible for registration and login 
 
 Let’s generate these resources using the NestJS CLI:
 ```shell
@@ -84,52 +79,51 @@ nest generate resource task
 nest generate resource auth
 ```
 When prompted, select REST API as the transport layer and choose Yes to generate the CRUD endpoints.
+### Creating The Database Entities 
+We need two core entities: the User entity and the Task entity.   
+The User Entity represents application users and stores their basic information such as username, password, email, and avatar. The Task model represents tasks created by users, including details like task name, description, creation time, and current state (active or done).
 
-### Creating Database Models 
-Now we move to creating our database models. we only need two core models: the **User** model and the Task model.
-
-The User model represents application users and stores their basic information such as username, password, email, and avatar. The Task model represents tasks created by users, including details like task name, description, creation time, and current state (active or done).
-
-There is a one-to-many relationship between users and tasks:
+We also add a one-to-many relationship between users and tasks:
 - A user can have many tasks
 - Each task belongs to exactly one user
 
-**`user/entities/ser.entity.ts`**
+**`user/entities/user.entity.ts`**
 ```js
 import { OneToMany, Entity, PrimaryGeneratedColumn, Column} from 'typeorm';
 import { Task } from '../../task/entities/task.entity';
 
+
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ length: 200, unique: true })
-  username: string;
+  @Column({ length: 200, unique: true })
+  username: string;
 
-  @Column({ length: 200, unique: true })
-  email: string;
+  @Column({ length: 200, unique: true })
+  email: string;
 
-  @Column()
-  password: string;
+  @Column()
+  password: string;
+  
+  @Column()
+  avatar: string; 
 
-  @Column()
-  avatar: string;
+  @OneToMany(() => Task, (task) => task.user)
+  tasks: Task[];
 
-  @OneToMany(() => Task, (task) => task.user)
-  tasks: Task[];
 }
 ```
-**User Model**
 - `id`: Primary key that uniquely identifies each user
 - `username`: Unique username for login and identification
-- `email`: User email address (also unique)
-- `password`: Stores the hashed password (never store plain text passwords)
-- `avatar`: Optional field to store a profile picture URL or file path
+- `email`: Unique user email address
+- `password`: Stores the hashed password 
+- `avatar`: Store a profile picture name. 
 
 The `tasks` attribute defines a one-to-many relationship, allowing us to access a user’s tasks using `user.tasks`.
 
-We register our module in `users.module.ts`
+After creating The Entity we register it in `users.module.ts`, by adding it to the imports.
 
 **``users.module.ts``**
 ```js
@@ -147,44 +141,116 @@ import { User } from './entities/user.entity';
 export class UsersModule {}
 
 ```
+### Creating The User DTO
+Now we create the data validator and transformer for the User, We will need four DTO.
+- Registration DTO which we use when user try to register and create new account
+- Login DTO
+- Update User DTO we use when the set try update his account information
+- Finally Update Password DTO, we use when user try to update his password
 
-Finally we create the task model
+Lets start by creating,Registration and Login Dtor inside `users/dto/create-user.dto.ts`.  
+Registration Dto will need four string fields, username, email, password and avatar.  
+Login Dto will need only two string fields,emails and password.  
+```ts
+import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 
+export class CreateUserDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  username: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  avatar: string;
+}
+
+export class LoginDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password: string;
+}
+```
+After that we create the update user and update password Dto inside `users/dto/update-user.dto.ts`.   
+The Update User Dto need three string fields, email and username are required but the avatar is optional.   
+The Update Password Dto need Only one required field which is the password.  
+```ts
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateUserDto } from './create-user.dto';
+import { IsString, IsNotEmpty, MaxLength,IsOptional } from 'class-validator';
+
+export class UpdateUserDto extends PartialType(CreateUserDto) {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  username: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  email: string;
+  
+  @IsOptional()
+  avatar?: string;
+}
+
+export class UpdatePasswordDto extends PartialType(CreateUserDto) {
+
+  @IsString()
+  @IsNotEmpty()
+  password: string;
+}
+```
+### Creating The Task Entity
+Now we move to create the Task Entity   
 **`task/entities/task.entity`**
 ```ts
 import { ManyToOne, JoinColumn, Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { User } from '../../users/entities/user.entity'; 
+
 
 @Entity()
 export class Task {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ length: 200 })
-  name: string;
-  
-  @Column({ default: "active" })
-  state: string;
+  @Column({ length: 200 })
+  name: string;
 
-  @CreateDateColumn()
-  created_at: Date;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: User;
+  @Column({ default: "active" })
+  state: string; 
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' }) 
+  user: User;
 }
 ```
-Task Model**
+Task Model
 - `id`: Primary key for each task
 - `name`: Task title
-- `description`: Optional detailed description of the task
 - `created_at`: Timestamp automatically set when the task is created
 - `state`: Represents the task status (`active` or `done`)
 
-The `userId` field is a foreign key that links each task to its owner. This ensures that every task belongs to a valid user.
-
-We register our module in `task.module.ts`
-
+The `userId` field is a foreign key that links each task to its owner. This ensures that every task belongs to a valid user.   
+We register our module in `task.module.ts`  
 **``task.module.ts``**
 ```js
 import { Module } from '@nestjs/common';
@@ -201,9 +267,34 @@ import { Task } from './entities/task.entity';
 export class TaskModule {}
 
 ```
+### Creating The Task Dto
+We Also need  Data validator for Tasks, we need two Dto when for Creating task, and one for updating the task.  
+We start with Create Task Dto we create it inside `task/dto/create-task.dto.ts`, it need only one required field which is the task name.
+```ts
+import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 
+export class CreateTaskDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  name: string;
+}
+```
+After that we create the Update Task Dto inside `task/dto/update-task.dto.ts`, we can update only the task state so we will need only one string fiels.  
+```ts
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateTaskDto } from './create-task.dto';
+import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+
+export class UpdateTaskDto extends PartialType(CreateTaskDto) {
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(10)
+    state: string;
+}
+```
 ### Initialize The Database
-After defining our models, we need to initialize the database TypeOrm can create the corresponding tables. We do that by adding the following code inside the import array in the ``app.module.ts`` file.
+After defining our entities, we need to initialize the database, so TypeOrm can create the corresponding tables. We do that by adding the database configurtion inside the import array in the ``app.module.ts`` file.
 
 **`app.module.ts`**
 ```js
@@ -222,79 +313,487 @@ TypeOrmModule.forRoot({
   //..
 })
 ```
-### Creating The Data Validator
-#### The User Validator 
-We create validator to validate creating user 
-**``create-user.dto.ts``**
+### Creating Guards
+When a user is logged in, we remove their access to the Login and Registration routes. When a user is not authenticated, we prevent them from performing any actions on the task-related routes. We handle this by using route guards. 
+We create an Authorization Guard to protect routes that require an authenticated user, and another guard to prevent logged-in users from accessing authentication routes (such as Login and Registration).  
+**``src/guard/authorization.guard.ts``**
 ```ts
-import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 
-export class RegisterDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
-  username: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
-  email: string;
-
-  @IsString()
-  @IsNotEmpty()
-  password: string;
+@Injectable()
+export class Authorized implements CanActivate {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const req = context.switchToHttp().getRequest(); 
+    const res = context.switchToHttp().getResponse(); 
+    const id =  req.session.get("userId");
+    if (!id){
+       return res.status(403).send({message:"Not Authorized"}); 
+    } 
+    return true;
+  }
 }
 
-export class LoginDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
-  email: string;
-
-  @IsString()
-  @IsNotEmpty()
-  password: string;
-
+@Injectable()
+export class Guest implements CanActivate {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const req = context.switchToHttp().getRequest();  
+    const res = context.switchToHttp().getResponse();  
+    const id = req.session.get("userId");
+    if (!id){
+      return true;
+    } 
+    return res.status(403).send({message:"You Aleardy Logged in"}); 
+  }
 }
 ```
-We create two class one for validating the register and one for login , after that we update the `update-user.dto.ts` and make it use the register validator.     
-**``update-user.dto.ts``**
+### Creating The Parametre Decorator
+We submitting files so we also need parametre decorator, to retrive the file from the form. and another parametre decorator for retriving form fields.  
+
+We start with the `File` decorator, it loop over the form data when it find field named type it return it content.  
+**``parameter_decorators/parametre.decorator.file.ts``**
 ```ts
-import { PartialType } from '@nestjs/mapped-types';
-import { RegisterDto } from './create-user.dto';
-import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import { createParamDecorator, ExecutionContext,BadRequestException,InternalServerErrorException } from '@nestjs/common';
+import {MultipartFile} from '@fastify/multipart'
+export const File = createParamDecorator(
 
-export class UpdateUserDto extends PartialType(RegisterDto) {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
-  username: string;
+  async (data: unknown, ctx: ExecutionContext):Promise<MultipartFile|null> => {
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
-  email: string;
+    const request = ctx.switchToHttp().getRequest(); 
+    if (!request.isMultipart()) {
+      throw new BadRequestException('Request must be multipart/form-data.');
+    }
+    const parts = request.parts();
+    try {
+      for await (const part of parts) {
+        if (part.type === 'file') {
+          return part;   
+        }
+      }
+    
+    } catch (error) {
+      console.error('File upload error:', error);
+      throw new InternalServerErrorException('File upload failed due to a server error.');
+    }
+    return null;
+}   
+)
+```
+After that we create parameter decorator to retrive the form field and return them as CreateUserDtor or UpdateUserDto.  
+**``parameter_decorators/parametre.decorator.fields.ts``**
+```ts
+import { createParamDecorator, ExecutionContext} from '@nestjs/common';
+import { CreateUserDto} from '../users/dto/create-user.dto';
+import { UpdateUserDto} from '../users/dto/update-user.dto';
+export const Fields= createParamDecorator(
 
-}
+  async (data: unknown, ctx: ExecutionContext):Promise<CreateUserDto|UpdateUserDto> => {
 
-export class UpdatePasswordDto extends PartialType(RegisterDto) {
+    const request = ctx.switchToHttp().getRequest(); 
+    const parts = request.parts();
+    let avatar = '';
+      let typeDto: CreateUserDto|UpdateUserDto = {} as CreateUserDto|UpdateUserDto;
+      for await (const part of parts) {
+          if (part.type !== 'file') {
+            typeDto[part.fieldname] = part.value;
+          }else{
+            break;
+          }
+        }
+        return typeDto;
+    } 
+)
+```
+### Creating The Services and Controllers
+Now everything is set we start to create our services and controllers.
+#### The Auth Service
+We start with the authorification service, we will create three methods2.
+- ``uploadAvatar`` this method handel uploading the avatar image to our server.
+- ``register`` this method to save new user record in our database
+- ``login`` finally this will verify email and password and log user in.
+```ts
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../users/entities/user.entity';
+import { CreateUserDto, LoginDto} from '../users/dto/create-user.dto';
+import * as argon2 from 'argon2';
+import { MultipartFile} from '@fastify/multipart';
+import { createWriteStream } from 'fs';
+import { join } from 'path';
+import { randomUUID } from 'crypto';
 
-  @IsString()
-  @IsNotEmpty()
-  password: string;
+@Injectable()
+export class AuthService {
+  constructor(
+    @InjectRepository(User) 
+    private authRepository: Repository<User>
+  ) {}
+
+  async uploadAvatar(file: MultipartFile): Promise<string> {
+    const fileExtension = file.filename.split('.').pop();
+    const uniqueId = randomUUID();
+    const newFilename = `${uniqueId}.${fileExtension}`;
+    const filePath = join(process.cwd(), 'public/avatars', newFilename);
+
+    await new Promise<void>((resolve, reject) => {
+      const writeStream = createWriteStream(filePath);
+      file.file.pipe(writeStream)
+        .on('finish', resolve)
+        .on('error', reject);
+    });
+    return newFilename;
+  }
+  
+  async register(CreateUserDto: CreateUserDto): Promise<User> {
+    CreateUserDto.password = await argon2.hash(CreateUserDto.password);
+    const newUser = this.authRepository.create(CreateUserDto);
+    return this.authRepository.save(newUser);
+  }
+  
+  async login(LoginDto: LoginDto): Promise<User|null> {
+    const user = await this.authRepository.findOne({ where: { email: LoginDto.email} });
+    if (user && await argon2.verify(user.password, LoginDto.password)) {
+      return user;
+    }
+    return null;
+  }
 }
 ```
-#### The Task Validator 
-We need another validator for creating task.   
-**``create-task.dto.ts``**
+We are using the User entity in our server so we need to add it to our auth.module.ts imports
 ```ts
-import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+imports: [TypeOrmModule.forFeature([User])],
+```
+#### The Auth Controller
+First we use the `Guest` guard to make sure logged in user can^t access this controller.after that we create our methods
+- ``POST register`` for registring user
+- ``POST login`` for login user in
+```ts 
+import { Controller, Post, Body, Req,Res,UseGuards} from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { CreateUserDto,LoginDto } from '../users/dto/create-user.dto';
+import type { FastifyRequest,FastifyReply } from 'fastify';
+import type { Session } from '@fastify/secure-session'
+import { File } from 'src/parameter_decorators/parameter.decorator.file'
+import { Fields } from 'src/parameter_decorators/parameter.decorator.fields'
+import type { MultipartFile} from '@fastify/multipart';
+import {Guest} from 'src/guard/authorization.guard'
+@Controller('api')
+@UseGuards(Guest)
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
 
-export class CreateTaskDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
-  name: string;
-
+  @Post('register')
+  async register(@File() file:MultipartFile,@Fields() fields:CreateUserDto,@Res() res:FastifyReply) {
+    const filename:string = await this.authService.uploadAvatar(file);
+    fields.avatar = filename
+    await this.authService.register(fields);
+    return res.status(201).send({ message: 'Registred' });
+  }
+  
+  @Post('login')
+  async create(@Body() loginDto: LoginDto, @Req() req: FastifyRequest,@Res() res:FastifyReply) { 
+    const user = await this.authService.login(loginDto);
+    if(!user){
+    return res.status(401).send({ message: 'Invalid credentials' });
+    }
+    (req.session as any).set("userId",String(user.id) );
+    return res.status(201).send({ message: 'logged in' });
+  }
+  
 }
 ```
+We can see instead of rendring templates, we using `send` to send JSON object as response to the request.
+#### The User Service
+We create the User service, we will need three methods.
+- ``findOne``: select and return using his id
+- ``updateUser``: update user information
+- ``updatePassword`` update user password
+```ts
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository,UpdateResult } from 'typeorm';
+import { AuthService} from '../auth/auth.service';
+import { UpdateUserDto,UpdatePasswordDto } from './dto/update-user.dto';
+import { User } from '../users/entities/user.entity';
+import * as argon2 from 'argon2';
+
+@Injectable()
+export class UsersService {
+   constructor(
+      @InjectRepository(User) 
+      private userRepository: Repository<User>,
+    ) {}
+
+  async findOne(id: number): Promise<User|null>{
+    return this.userRepository.findOne({ where: { id } });
+  }
+ 
+  async updateUser(id: number, updateUserDto: UpdateUserDto): Promise<UpdateResult> {
+    return this.userRepository.update(id, updateUserDto);
+  }
+
+  async updatePassword(id: number, updatePasswordDto: UpdatePasswordDto): Promise<UpdateResult> {
+    updatePasswordDto.password = await argon2.hash(updatePasswordDto.password || '');
+    return this.userRepository.update(id, updatePasswordDto);
+  }
+}
+```
+#### The User Controller
+Firstly we use the `Authorized` to make sure only logged in users can access and manage their accounts. After that we define three routes.
+- ``Get user`` return logged in user data.
+- ``Put user`` update the logged in user data.
+- ``Patch user/password`` update the logged in user password.
+- `````
+```ts
+import { Controller, Get, Put, Body, Patch, UseGuards,Res,Req} from '@nestjs/common';
+import { UsersService } from './users.service';
+import { UpdateUserDto,UpdatePasswordDto } from './dto/update-user.dto';
+import type { FastifyRequest, FastifyReply } from 'fastify';
+import {AuthService } from 'src/auth/auth.service';
+import { File } from 'src/parameter_decorators/parameter.decorator.file'
+import { Fields } from 'src/parameter_decorators/parameter.decorator.fields'
+import {Authorized} from 'src/guard/authorization.guard'
+
+@Controller('api')
+@UseGuards(Authorized)
+export class UsersController {
+  constructor(private readonly usersService: UsersService,
+    private readonly authService: AuthService ) {}
+
+  
+  @Get('user')
+  async findOne(@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
+    const userSession = parseInt(req.session.get("userId"));
+    const user = await this.usersService.findOne(userSession);
+    if(!user){
+        return reply.status(404).send({ message: 'User not found' });
+    }
+    return reply.status(201).send(
+            {id: user.id,username: user.username,email: user.email,avatar: 'static/avatars/' + user.avatar,});
+  }
+
+  @Put('user')
+  async updateUser(@File() file,@Fields() fields:UpdateUserDto,@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
+    const userSession = parseInt(req.session.get("userId"));
+    if(file !== null){
+      fields.avatar = await this.authService.uploadAvatar(file);
+    }
+    await  this.usersService.updateUser(userSession,fields);
+    return reply.status(201).send({ message: 'User profile updated successfully' });
+  }
+
+  @Patch('user/password')
+  async updatePassword(@Body() updatePasswordDto: UpdatePasswordDto,@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
+    const userSession = parseInt(req.session.get("id"));
+    await this.usersService.updatePassword(userSession, updatePasswordDto);
+    return reply.status(201).send({ message: 'Password updated successfully' });
+  }
+}
+```
+In our controller we are using the `AuthService` so we need to add it to our ``users.module.ts`` providers.
+
+```ts
+import { AuthService } from 'src/auth/auth.service'; // we add this to the import
+// and inside Module decorator
+providers: [UsersService,AuthService ] // we add AuthService 
+```
+#### The Task Service
+In the task service we need four methods.
+- ``create`` create task record
+- ``findAll`` return all task that belong to user
+- ``update`` update state of a task
+- ``remove`` delete a task from the record
+```ts
+import { Injectable } from '@nestjs/common';
+import { CreateTaskDto} from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository,UpdateResult } from 'typeorm';
+import { Task } from './entities/task.entity';
+import { User } from '../users/entities/user.entity';
+
+@Injectable()
+export class TaskService {
+   constructor(
+      @InjectRepository(Task) 
+      private taskRepository: Repository<Task>,
+      @InjectRepository(User) 
+      private userRepository: Repository<User>
+    ) {}
+    
+  async create(id:number, name: string): Promise<Task|null> {
+    const user = await this.userRepository.findOneBy({ id });
+    if(!user){
+      return  null
+    }
+    const newTask = await this.taskRepository.create({name:name,user});
+    return this.taskRepository.save(newTask );
+  }
+
+  async findAll(userId: number): Promise<Task[]> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user) {
+      throw new Error('User not found');
+    }
+    return this.taskRepository.find({ where: { user } });
+    }
+
+  async update(id: number,updateTaskDto: UpdateTaskDto ): Promise<UpdateResult>{
+    return this.taskRepository.update(id, updateTaskDto);
+  }
+
+  async remove(id: number) {
+     await this.taskRepository.delete(id);
+  }
+}
+```
+We using the User entity so we need to add it to the ``task.module.ts`` import.
+```ts
+// inside module decortor we add
+imports: [TypeOrmModule.forFeature([Task]),TypeOrmModule.forFeature([User])],  // add TypeOrmModule.forFeature([Task])
+```
+#### The Task Controller
+Finally we create the task controller. it will be protected by the `Authorized` guard, it will have the following routes.
+- `Get tasks` return all tasks that belong to the logged in user
+- `Post tasks` create new task
+- `Put tasks/:id'` update task state
+- `Delete tasks/:id'` delete task from the record
+```ts
+import { Controller, Get, Post, Body,Put ,Param, Delete,Req,Res,UseGuards } from '@nestjs/common';
+import { TaskService } from './task.service';
+import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
+import type { FastifyRequest,FastifyReply } from 'fastify';
+import { Authorized } from 'src/guard/authorization.guard'
+
+@Controller('api')
+@UseGuards(Authorized)
+
+export class TaskController {
+  constructor(private readonly taskService: TaskService) {}
+
+  @Get('tasks')
+  async findAll(@Req() req: FastifyRequest,@Res() reply: FastifyReply) {
+    const userSession = parseInt(req.session.get("userId"));
+    const tasks = await this.taskService.findAll(userSession);
+    return reply.status(201).send(tasks.map(task => ({
+        id: task.id,
+        name: task.name,
+        state: task.state,
+        createdAt: task.created_at,
+      }))
+    )
+ 
+  }
+  @Post('tasks')
+  async create(@Body() createTaskDto: CreateTaskDto,@Req() req: FastifyRequest,@Res() reply: FastifyReply) {
+      const userSession = parseInt(req.session.get("userId"));
+      const newTask = await this.taskService.create(userSession,createTaskDto.name);
+      if(!newTask){
+        return reply.status(401).send({ message: "Couldn't Create task" })
+      }
+     return reply.status(201).send({ message: 'Task created successfully' })
+  }
+  
+
+  @Put('tasks/:id')
+  async update(@Param('id') id: number, @Body() updateTaskDto: UpdateTaskDto,@Res() reply: FastifyReply) {
+    this.taskService.update(id, updateTaskDto);
+    return reply.status(201).send({ message: 'Task updated successfully' })
+  }
+
+  @Delete('tasks/:id')
+  async remove(@Param('id') id: number,@Res() reply: FastifyReply) {
+    this.taskService.remove(id);
+    return reply.status(201).send({ message: 'Task deleted successfully' })
+  }
+}
+```
+### Configuring The App
+Finally we configure our `main.ts` file, we set nestjs on the Fastify Adaptater, we set the validator pip and we register all our plugins.
+```ts
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { join } from 'path';
+import * as handlebars from 'handlebars';
+import { ValidationPipe } from '@nestjs/common';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+
+async function bootstrap() {
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter(),
+  );
+
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
+  
+  app.register(require('@fastify/view'), {
+    engine: {
+      handlebars: handlebars,
+    },
+    templates: join(__dirname, '..', 'views'), 
+  });
+
+  await app.register(require('@fastify/multipart'), {
+    limits: {
+      fileSize: 10 * 1024 * 1024,
+    },
+  });
+  await app.register(require('@fastify/static'), {
+	root: join(__dirname, '..', 'public'), 
+	prefix: '/static/', 
+  });
+  await app.register(require('@fastify/cookie'))
+  await app.register(require('@fastify/secure-session'), {
+    secret: 'aVerySecretaVerySecretKeyaVerySecretKeyaVerySecretKeyaVerySecretKeyKey',
+    cookie: {
+      secure: false,       
+      httpOnly: true,      
+      sameSite: 'lax',     
+      maxAge: 15 * 60 * 1000 
+    },
+    saveUninitialized: false,
+  });
+  await app.listen(process.env.PORT ?? 3000);
+}
+bootstrap();
+```
+### Creating The Interface
+Now that our API is fully functional, we need a user interface to interact with it. Instead of the server rendering HTML pages for every route, we will serve a single HTML file (Single Page Application approach) and use JavaScript to fetch data from our API and update the DOM dynamically.
+#### Serving the Entry Point
+We need to update our `app.controller` to serve the `index.html` file when a user visits the root URL.
+
+**`app.controller.ts`**
+```ts
+import { Controller, Get,Render } from '@nestjs/common';
+import { AppService } from './app.service';
+
+@Controller()
+export class AppController {
+  constructor(private readonly appService: AppService) {}
+
+  @Get()
+  @Render('index')
+  index(){
+   
+  }
+}
+
+```
+Now, when you visit `http://127.0.0.1:3000/`, NestJs will serve the HTML file, and the rest of the application interaction will happen via JavaScript calling our API endpoints.
+#### The HTML and CSS
+We created a simple interface with two main sections: a Login section and a Dashboard section. Initially, the dashboard is hidden. After the user successfully logs in, the login section will be hidden, and the dashboard will be displayed.
+
+We can find the HTML template and styling files inside the ``materials`` folder. The ``index.html`` file should be moved to the ``views`` folder and the ``style.css`` file should be moved to the ``public/css`` folder.
+#### Client-Side Logic (JavaScript)
+This is the most important part. The JavaScript file acts as the bridge between HTML events (such as clicks) and the Express REST API.
+
+The code listens for form submissions and button clicks, then makes API calls using fetch to the corresponding endpoints. For example, when a user logs in, it sends a POST request to ``/api/login``, stores the session, and updates the view to display the user’s tasks. Similarly, task actions like creating, updating, or deleting a task are sent to the ``/api/tasks`` endpoints, and the page updates dynamically without reloading.
+
+Helper functions handle view switching, displaying messages, and ensuring that only logged-in users can access protected sections.
+
+The file is currently in the ``materials`` folder. We should move it  to the ``public/js`` folder so it can be served as a static asset by NestJs.

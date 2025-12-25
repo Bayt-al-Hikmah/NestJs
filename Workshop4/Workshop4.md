@@ -484,7 +484,7 @@ app.useGlobalPipes(new ValidationPipe({
 ```
 Now NestJS will validate the request body automatically whenever we use the DTO:
 ```ts
-async addTask(@Body() createTodoDto: CreateTodoDto, @Res({ passthrough: true }) res: FastifyReply,@Request() req)
+async addTask(@Body() createTodoDto: CreateTodoDto, @Res() res: FastifyReply,@Request() req)
 ```
 By specifying `@Body() createTodoDto: CreateTodoDto`, NestJS checks the request data according to the rules defined in `CreateTodoDto`.
 #### Building Custom Pipes
