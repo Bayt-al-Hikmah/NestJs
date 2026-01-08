@@ -638,13 +638,20 @@ export class TaskService {
     return this.taskRepository.find({ where: { user } });
     }
 
-  async update(id: number,updateTaskDto: UpdateTaskDto ): Promise<UpdateResult>{
-    return this.taskRepository.update(id, updateTaskDto);
+  async update(taskId: number, userId: number, updateTaskDto: UpdateTaskDto) {
+  const result = await this.taskRepository.update({ id: taskId, user: { id: userId } },updateTaskDto);
+  if (result.affected === 0) {
+    throw new Error('Task not found or access denied');
   }
+  return result;
+}
 
-  async remove(id: number) {
-     await this.taskRepository.delete(id);
+  async remove(taskId: number, userId: number) {
+  const result = await this.taskRepository.delete({id: taskId,user: { id: userId },});
+  if (result.affected === 0) {
+    throw new Error('Task not found or access denied');
   }
+}
 }
 ```
 We using the User entity so we need to add it to the ``task.module.ts`` import.
@@ -698,13 +705,15 @@ export class TaskController {
 
   @Put('tasks/:id')
   async update(@Param('id') id: number, @Body() updateTaskDto: UpdateTaskDto,@Res() reply: FastifyReply) {
-    this.taskService.update(id, updateTaskDto);
+    const userSession = parseInt(req.session.get("userId"));
+    this.taskService.update(id, userSession, updateTaskDto);
     return reply.status(201).send({ message: 'Task updated successfully' })
   }
 
   @Delete('tasks/:id')
   async remove(@Param('id') id: number,@Res() reply: FastifyReply) {
-    this.taskService.remove(id);
+    const userSession = parseInt(req.session.get("userId"));
+    this.taskService.remove(id, userSession);
     return reply.status(201).send({ message: 'Task deleted successfully' })
   }
 }
