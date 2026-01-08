@@ -33,11 +33,26 @@ export class TaskService {
     }
 
  
-  async update(id: number,updateTaskDto: UpdateTaskDto ): Promise<UpdateResult>{
-    return this.taskRepository.update(id, updateTaskDto);
+ async update(taskId: number, userId: number,updateTaskDto: UpdateTaskDto,) {
+  const result = await this.taskRepository.update(
+    { id: taskId, user: { id: userId } },
+    updateTaskDto,
+  );
+
+  if (result.affected === 0) {
+    throw new Error('Task not found or access denied');
   }
 
-  async remove(id: number) {
-     await this.taskRepository.delete(id);
+  return result;
+}
+  async remove(taskId: number, userId: number) {
+  const result = await this.taskRepository.delete({
+    id: taskId,
+    user: { id: userId },
+  });
+
+  if (result.affected === 0) {
+    throw new Error('Task not found or access denied');
   }
+}
 }
