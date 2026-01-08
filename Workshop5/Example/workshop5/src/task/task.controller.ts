@@ -38,13 +38,15 @@ export class TaskController {
 
   @Put('tasks/:id')
   async update(@Param('id') id: number, @Body() updateTaskDto: UpdateTaskDto,@Res() reply: FastifyReply) {
-    this.taskService.update(id, updateTaskDto);
+    const userId = parseInt(req.user.userId);
+    this.taskService.update(userId, id, updateTaskDto);
     return reply.status(201).send({ message: 'Task updated successfully' })
   }
 
   @Delete('tasks/:id')
   async remove(@Param('id') id: number,@Res() reply: FastifyReply) {
-    this.taskService.remove(id);
+    const userId = parseInt(req.user.userId);
+    this.taskService.remove(userId,id);
     return reply.status(201).send({ message: 'Task deleted successfully' })
   }
 }
