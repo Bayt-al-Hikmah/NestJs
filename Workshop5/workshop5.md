@@ -1006,8 +1006,8 @@ export class AppModule {}
 - ttl: 60000  time window in mini seconds here we set it to 60000 which mean one minute.
 - limit: 100 mean max 10 requests per minute per IP.
 - storage: we set it to the `ThrottlerStorageRedisService(redis)`
-### Configuring The Routes
-This configuration will work globally in all our application all our routes wiill have rate limit of 10 request per second, we can overwrite this, in our controller for example we can use `@SkipThrottle()` Decorator to skip and don't apply the rate limit for specific route or controller. we can also use `@Throttle(100, 1000)` Decorator to overwrite the rate limit for specific.  
+### Ovverride The Rate Limit
+The configuration will work globally, all our routes will have rate limit of 10 request per second, we can override this, in our controllers for example we can use `@SkipThrottle()` Decorator to skip and don't apply the rate limit for specific route or controller. we can also use `@Throttle(100, 1000)` Decorator to overwrite the rate limit for specific one.  
 Example lets make the main route `/` skip the rate limit
 ```ts
 import { Controller, Get,Render } from '@nestjs/common';
@@ -1025,3 +1025,76 @@ export class AppController {
 }
 ```
 Now the rate limit wont work on this Controller.  
+### Query Parameters and Pagination in NestJS
+#### Query Parameters
+Sometimes we need to apply filters to our data.  
+For example, allowing the user to search for tasks by name.  
+In NestJS, this is done using query parameters, which are accessed inside controller methods using the @Query() decorator.  
+```js
+@Get('tasks')
+findTasks(@Query('name') name: string) {
+  // name contains the value of ?name=...
+}
+```
+If the request URL is:
+```
+GET /tasks?name=study
+```
+Then the name parameter will have the value "study", Query parameters are commonly used for filtering, searching, sorting, and pagination.  
+Wecan also retrieve all query parameters at once:
+```js
+@Get('tasks')
+findTasks(@Query() query: any) {
+  // query.name, query.page, query.limit, ...
+}
+```
+#### Pagination
+Pagination is the process of dividing data into chunks instead of returning all records at once.  This improves performance and makes APIs easier to consume.  
+For example, instead of returning all tasks, we return 10 tasks per request, and the client can load more by navigating between pages.   
+NestJS we implement pagination manually or with the help of TypeORM.  
+#### Limit–Offset Pagination  
+The most common pagination style is limit–offset pagination, where we send an offset that specifies where to start retrieving data, and a limit that specifies how many records to return.    
+Example request:
+```
+GET /tasks?limit=10&offset=20
+```
+In the controller, we retrieve these query parameter values:
+```js
+@Get('tasks')
+findTasks(
+  @Query('limit') limit = 10,
+  @Query('offset') offset = 0,
+) {
+  return this.tasksService.findWithOffset(offset, limit);
+}
+```
+Then, in the service, we use these values as follows:
+```js
+const [results, count] = await this.taskRepository.findAndCount({skip: offset,take: limit,});
+```
+#### Page Number Pagination
+When working with large databases, the offset value can quickly become very large, which may negatively affect performance. To address this, we can use a cleaner and more structured pagination approach called page-based pagination, where we use page and limit query parameters.   
+Example request:
+```
+GET /tasks?page=1&limit=10
+```
+The controller receives these query parameters
+```js
+@Get('tasks')
+findTasks(
+  @Query('page') page = 1,
+  @Query('limit') limit = 10,
+) {
+  const skip = (page - 1) * limit;
+}
+```
+Here, we use page and limit to calculate how many records TypeORM should skip when retrieving data.  
+Each page contains 10 elements:
+- For the first page, we skip 0 records and retrieve the first 10.
+- For the second page, we skip 10 records and retrieve the next 10.
+- For the third page, we skip 20 records, and so on.
+
+Finally we update our service to apply this logic:
+```js
+const [results, count] = await this.taskRepository.findAndCount({ skip, take: limit, });
+``` 
