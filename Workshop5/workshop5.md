@@ -1070,7 +1070,7 @@ findTasks(
 ```
 Then, in the service, we use these values as follows:
 ```js
-const [results, count] = await this.taskRepository.findAndCount({skip: offset,take: limit,});
+const [results, count] = await this.taskRepository.findAndCount({skip: offset,take: limit,order: { createdAt: 'DESC' },});
 ```
 #### Page Number Pagination
 When working with large databases, the offset value can quickly become very large, which may negatively affect performance. To address this, we can use a cleaner and more structured pagination approach called page-based pagination, where we use page and limit query parameters.   
@@ -1096,5 +1096,5 @@ Each page contains 10 elements:
 
 Finally we update our service to apply this logic:
 ```js
-const [results, count] = await this.taskRepository.findAndCount({ skip, take: limit, });
+const [results, count] = await this.taskRepository.findAndCount({ skip, take: limit, order: { createdAt: 'DESC' }, });
 ``` 
